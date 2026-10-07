@@ -43,7 +43,7 @@ MODUL.akses = {
       ],
       isiAwal: [
         { nama: 'Superadmin', akses: '*', boleh_hapus: true, boleh_ekspor: true, keterangan: 'Semua menu, termasuk pengelolaan admin' },
-        { nama: 'Editor', akses: 'Artikel, Kategori, Kontributor, Kajian, Bidang, Tautan, Pengurus, Video, KategoriVideo, SumberVideo', boleh_hapus: false, boleh_ekspor: true, keterangan: 'Konten & kurasi kontributor' },
+        { nama: 'Editor', akses: 'Artikel, Kategori, Kontributor, Kajian, Bidang, Tautan, Pengurus, Video, KategoriVideo, SumberVideo, PlaylistVideo', boleh_hapus: false, boleh_ekspor: true, keterangan: 'Konten & kurasi kontributor' },
         { nama: 'Bendahara', akses: 'Sematan, Program, Rekening, KontakDonasi, Konfirmasi', boleh_hapus: false, boleh_ekspor: true, keterangan: 'Donasi & banner' },
         { nama: 'Pengelola Kajian', akses: 'Kajian, LogLokasi', boleh_hapus: true, boleh_ekspor: true, keterangan: 'Jadwal & log lokasi' }
       ]

@@ -270,6 +270,11 @@ var ADMIN_API = {
         var v = obj.hasOwnProperty(c.k) ? obj[c.k] : (lama ? lama[c.k] : '');
         if (v === '' || v === null || v === undefined) throw new Error('Kolom "' + (c.l || c.k) + '" wajib diisi.');
       });
+      def.kolom.forEach(function (c) {
+        if (c.t !== 'image' || !obj[c.k]) return;
+        publikkanGambar_(obj[c.k], true);
+        obj[c.k] = urlGambar_(obj[c.k]);
+      });
       var m = MODUL[def.modul];
       if (m && m.sebelumSimpan) m.sebelumSimpan(nama, obj, lama);
       var key = tb.set(obj);

@@ -132,6 +132,20 @@ function pastikanStruktur_() {
 /** Migrasi data sekali jalan antar versi. */
 function migrasi_() {
   if (!prop_('MIGRASI_CONTOH_1')) { bersihkanContoh_(); prop_('MIGRASI_CONTOH_1', '1'); }
+  if (!prop_('MIGRASI_PLAYLIST_1')) { tambahAksesPeran_('SumberVideo', 'PlaylistVideo'); prop_('MIGRASI_PLAYLIST_1', '1'); }
+}
+
+/** Peran yang sudah boleh membuka sheet `ada` otomatis boleh membuka sheet baru `baru`. */
+function tambahAksesPeran_(ada, baru) {
+  var tb = new Tabel_('Peran'), ubah = false;
+  tb.objek().forEach(function (p) {
+    var daftar = String(p.akses || '').split(',').map(function (x) { return x.trim(); });
+    if (daftar.indexOf(ada) >= 0 && daftar.indexOf(baru) < 0) {
+      tb.set({ nama: p.nama, akses: daftar.concat(baru).join(', ') });
+      ubah = true;
+    }
+  });
+  if (ubah) tb.simpan();
 }
 
 /** Hapus isi contoh bawaan versi awal (teks berkurung [ ] dan tautan sosmed kosong) yang belum diubah. */

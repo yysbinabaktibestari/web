@@ -355,10 +355,11 @@
       "judul": "[Judul video kajian]",
       "kategori": "kajian",
       "pemateri": "[Pemateri]",
-      "kanal": "[Kanal YouTube]",
+      "kanal": "[Nama channel utama]",
       "tanggal": "2026-10-05T19:30:00+07:00",
       "deskripsi": "Contoh video. Di website asli, video diambil dari URL YouTube atau sinkron otomatis dari kanal/playlist.",
-      "unggulan": true
+      "unggulan": true,
+      "kanal_id": "kanal-utama"
     },
     {
       "id": "v2",
@@ -366,10 +367,11 @@
       "judul": "[Judul video kegiatan]",
       "kategori": "kegiatan",
       "pemateri": "",
-      "kanal": "[Kanal YouTube]",
+      "kanal": "[Nama channel bidang]",
       "tanggal": "2026-10-01T09:00:00+07:00",
       "deskripsi": "",
-      "unggulan": false
+      "unggulan": false,
+      "kanal_id": "kanal-pendidikan"
     },
     {
       "id": "v3",
@@ -377,10 +379,57 @@
       "judul": "[Judul video kajian]",
       "kategori": "kajian",
       "pemateri": "[Pemateri]",
-      "kanal": "[Kanal YouTube]",
+      "kanal": "[Nama channel utama]",
       "tanggal": "2026-09-28T19:30:00+07:00",
       "deskripsi": "",
+      "unggulan": false,
+      "kanal_id": "kanal-utama"
+    },
+    {
+      "id": "v4",
+      "video_id": "",
+      "judul": "[Judul video kajian lanjutan]",
+      "kategori": "kajian",
+      "pemateri": "[Pemateri]",
+      "kanal": "[Nama channel utama]",
+      "kanal_id": "kanal-utama",
+      "tanggal": "2026-09-21T19:30:00+07:00",
+      "deskripsi": "",
       "unggulan": false
+    }
+  ],
+  "kanalVideo": [
+    {
+      "id": "kanal-utama",
+      "nama": "[Nama channel utama]",
+      "foto": "",
+      "url": ""
+    },
+    {
+      "id": "kanal-pendidikan",
+      "nama": "[Nama channel bidang]",
+      "foto": "",
+      "url": ""
+    }
+  ],
+  "playlistVideo": [
+    {
+      "id": "pl-kajian",
+      "judul": "[Judul playlist kajian]",
+      "kanal": "kanal-utama",
+      "isi": [
+        "v4",
+        "v3",
+        "v1"
+      ]
+    },
+    {
+      "id": "pl-kegiatan",
+      "judul": "[Judul playlist kegiatan]",
+      "kanal": "kanal-pendidikan",
+      "isi": [
+        "v2"
+      ]
     }
   ]
 }

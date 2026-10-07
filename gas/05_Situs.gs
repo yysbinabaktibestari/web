@@ -26,8 +26,8 @@ MODUL.situs = {
         { kunci: 'tagline', nilai: '', keterangan: 'Label kecil di atas judul beranda' },
         { kunci: 'judul_hero', nilai: '', keterangan: 'Judul besar di beranda' },
         { kunci: 'deskripsi', nilai: '', keterangan: 'Paragraf di bawah judul beranda & deskripsi SEO' },
-        { kunci: 'logo', nilai: '', keterangan: 'URL gambar logo (opsional)' },
-        { kunci: 'foto_hero', nilai: '', keterangan: 'URL foto kegiatan di beranda (opsional)' },
+        { kunci: 'logo', nilai: '', keterangan: 'Link gambar logo. Boleh link berbagi Google Drive (otomatis dibagikan publik)' },
+        { kunci: 'foto_hero', nilai: '', keterangan: 'Link foto kegiatan di beranda. Boleh link Google Drive' },
         { kunci: 'sejarah', nilai: '', keterangan: 'Halaman Tentang' },
         { kunci: 'visi', nilai: '', keterangan: 'Halaman Tentang' },
         { kunci: 'misi', nilai: '', keterangan: 'Satu misi per baris' },
@@ -37,7 +37,7 @@ MODUL.situs = {
         { kunci: 'telepon_wa', nilai: '', keterangan: 'Nomor WA kontak umum, mis. 0812xxxx' },
         { kunci: 'email', nilai: '', keterangan: 'Email yayasan' },
         { kunci: 'maps_embed', nilai: '', keterangan: 'URL embed Google Maps (Bagikan › Sematkan peta › ambil src)' },
-        { kunci: 'qris', nilai: '', keterangan: 'URL gambar QRIS donasi (opsional)' },
+        { kunci: 'qris', nilai: '', keterangan: 'Link gambar QRIS donasi. Boleh link Google Drive' },
         { kunci: 'ajakan_donasi', nilai: '', keterangan: 'Halaman Donasi' }
       ]
     },
@@ -132,6 +132,13 @@ MODUL.situs = {
 
   beranda: function () {
     return { bidang: tampilUrut_(bacaTabel_('Bidang')) };
+  },
+
+  /** Logo / foto beranda / QRIS dari Google Drive: langsung dibagikan publik saat disimpan. */
+  sebelumSimpan: function (nama, obj, lama) {
+    if (nama !== 'Pengaturan') return;
+    var kunci = obj.kunci || (lama && lama.kunci);
+    if (KUNCI_GAMBAR_.indexOf(kunci) >= 0 && obj.nilai) publikkanGambar_(obj.nilai, true);
   }
 };
 

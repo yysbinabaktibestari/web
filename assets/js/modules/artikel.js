@@ -47,7 +47,7 @@
     var baris = pilihan.map(function (k) {
       var on = (q.kontributor || '') === k.slug;
       var ikon = k.slug === '' ? '' : k.yayasan
-        ? '<span class="avatar kecil" style="background:var(--biru);color:#fff">' + (k.logo ? '<img src="' + esc(k.logo) + '" alt="">' : U.ikon('buku', 14)) + '</span>'
+        ? '<span class="avatar kecil" style="background:var(--biru);color:#fff">' + (k.logo ? '<img src="' + esc(U.urlGambar(k.logo)) + '" alt="">' : U.ikon('buku', 14)) + '</span>'
         : U.avatar(k.nama, k.foto, 'kecil');
       return '<a class="pil pil-penulis' + (on ? ' aktif' : '') + '"' + (on ? ' aria-current="page"' : '') + ' href="' +
         U.hash('artikel', { kontributor: k.slug, kategori: q.kategori }) + '">' + ikon + '<span>' + esc(k.nama) + '</span>' +
@@ -120,7 +120,7 @@
             '<span style="display:flex;align-items:center;gap:10px">' + U.avatar(a.penulis, k && k.foto) + '<strong style="color:var(--tinta)">' + esc(a.penulis || '') + '</strong></span>' +
             '<time datetime="' + esc(a.tanggal) + '">' + U.tgl(a.tanggal) + '</time><span>' + a.menit_baca + ' menit baca</span></div>' +
           mirror +
-          (a.sampul && !sampulDiIsi ? '<img src="' + esc(a.sampul) + '" alt="" style="border-radius:20px;width:100%;max-height:480px;object-fit:cover">' : '') +
+          (a.sampul && !sampulDiIsi ? '<img src="' + esc(U.urlGambar(a.sampul)) + '" alt="" style="border-radius:20px;width:100%;max-height:480px;object-fit:cover">' : '') +
           '<div class="isi-artikel">' + U.html(a.konten) + '</div>' +
           '<div class="bagikan"><strong style="margin-right:6px">Bagikan</strong>' +
             '<a class="btn btn-biru-garis btn-kecil" href="https://wa.me/?text=' + teksBagikan + '" target="_blank" rel="noopener">' + U.ikon('whatsapp', 18) + 'WhatsApp</a>' +

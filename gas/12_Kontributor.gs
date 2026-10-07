@@ -244,10 +244,11 @@ function sinkronFolder_(k, ta, kat, batas) {
   try { folder = DriveApp.getFolderById(fid); }
   catch (e) { throw new Error('Folder tidak bisa dibuka. Pastikan dibagikan "Siapa saja yang memiliki link".'); }
   var docs = [];
-  kumpulkanDoc_(folder, '', docs, 0);
+  kumpulkanDoc_(folder, [], docs, 0, {});
   var h = { baru: 0, ubah: 0, hilang: 0, tertunda: 0 }, terlihat = {};
   docs.forEach(function (d) {
     var id = 'f_' + d.file.getId();
+    if (terlihat[id]) return;            // Doc yang sama lewat pintasan / dua folder
     terlihat[id] = 1;
     var lama = ta.ambil(id);
     var upd = d.file.getLastUpdated();
@@ -260,7 +261,7 @@ function sinkronFolder_(k, ta, kat, batas) {
       judul: bersihJudul_(d.file.getName()),
       slug: lama ? lama.slug : slugUnik_(bersihJudul_(d.file.getName()), ta),
       status_kurasi: lama ? lama.status_kurasi : 'Belum dikurasi',
-      kategori: (lama && lama.kategori) || kat[d.sub.toLowerCase()] || k.kategori_default || '',
+      kategori: (lama && lama.kategori) || kategoriDariJalur_(d.jalur, kat) || k.kategori_default || '',
       status: lama ? lama.status : (k.status_artikel_baru || CONFIG.ARTIKEL_KONTRIBUTOR_STATUS_DEFAULT),
       sumber: 'folder',
       doc_url: d.file.getUrl(),
@@ -284,15 +285,46 @@ function sinkronFolder_(k, ta, kat, batas) {
   return h;
 }
 
-function kumpulkanDoc_(folder, sub, out, kedalaman) {
+/** Batas kedalaman subfolder yang dibaca (folder utama = 0). */
+var KEDALAMAN_FOLDER_KONTRIBUTOR = 5;
+
+/**
+ * Kumpulkan semua Google Doc di folder & subfoldernya (sampai 5 tingkat), termasuk
+ * pintasan (shortcut) ke Doc. `jalur` = nama-nama subfolder dari atas ke bawah.
+ */
+function kumpulkanDoc_(folder, jalur, out, kedalaman, dilihat) {
+  var fid = folder.getId();
+  if (dilihat[fid]) return;
+  dilihat[fid] = 1;
   var it = folder.getFilesByType(MimeType.GOOGLE_DOCS);
-  while (it.hasNext()) out.push({ file: it.next(), sub: sub });
-  if (kedalaman >= 1) return;
+  while (it.hasNext()) out.push({ file: it.next(), jalur: jalur });
+  if (MimeType.SHORTCUT) {
+    try {
+      var ps = folder.getFilesByType(MimeType.SHORTCUT);
+      while (ps.hasNext()) {
+        var p = ps.next();
+        try {
+          if (p.getTargetMimeType() === MimeType.GOOGLE_DOCS) out.push({ file: DriveApp.getFileById(p.getTargetId()), jalur: jalur });
+        } catch (e) { /* pintasan ke file yang tidak bisa dibuka: lewati */ }
+      }
+    } catch (e) { /* abaikan */ }
+  }
+  if (kedalaman >= KEDALAMAN_FOLDER_KONTRIBUTOR) return;
   var fs = folder.getFolders();
   while (fs.hasNext()) {
     var f = fs.next();
-    kumpulkanDoc_(f, f.getName(), out, kedalaman + 1);
+    kumpulkanDoc_(f, jalur.concat(f.getName()), out, kedalaman + 1, dilihat);
   }
+}
+
+/** Kategori dari nama subfolder: yang paling dalam lebih dulu, mis. "Opini/Pendidikan" → Pendidikan. */
+function kategoriDariJalur_(jalur, kat) {
+  for (var i = (jalur || []).length - 1; i >= 0; i--) {
+    var n = String(jalur[i]).trim().toLowerCase();
+    var cocok = kat[n] || kat[slug_(n)] || kat[bersihJudul_(jalur[i]).toLowerCase()];
+    if (cocok) return cocok;
+  }
+  return '';
 }
 
 /* ---------- Sumber: feed RSS / Atom / JSON Feed ---------- */

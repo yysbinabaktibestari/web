@@ -224,6 +224,63 @@ function idDrive_(url) {
   return /^[a-zA-Z0-9_-]{20,}$/.test(url) ? url : '';
 }
 
+/* ---------- Gambar dari link berbagi ---------- */
+
+/** Pengaturan yang berisi gambar (diubah jadi URL gambar langsung saat dibaca publik). */
+var KUNCI_GAMBAR_ = ['logo', 'foto_hero', 'qris'];
+
+/** ID file Drive dari link berbagi gambar (file/d/…, open?id=…, uc?id=…, thumbnail?id=…). */
+function idDriveGambar_(u) {
+  var s = String(u || '').trim();
+  if (!/^https?:\/\/(drive|docs)\.google\.com\//i.test(s)) return '';
+  var m = s.match(/\/file\/d\/([\w-]{20,})/) || s.match(/[?&]id=([\w-]{20,})/);
+  return m ? m[1] : '';
+}
+
+/**
+ * Link berbagi → URL yang bisa dipakai di <img>.
+ * Drive "…/file/d/ID/view" → thumbnail Drive; GitHub "…/blob/…" → raw; Dropbox dl=0 → raw=1;
+ * imgur.com/ID → i.imgur.com/ID.png. URL lain dikembalikan apa adanya.
+ */
+function urlGambar_(u) {
+  var s = String(u || '').trim();
+  if (!s || /drive\.google\.com\/thumbnail\?/.test(s)) return s;
+  var id = idDriveGambar_(s);
+  if (id) return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w1200';
+  var m = s.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+  if (m) return 'https://raw.githubusercontent.com/' + m[1] + '/' + m[2] + '/' + m[3];
+  m = s.match(/^https?:\/\/(?:www\.)?imgur\.com\/([A-Za-z0-9]{5,8})$/);
+  if (m) return 'https://i.imgur.com/' + m[1] + '.png';
+  if (/^https?:\/\/(www\.)?dropbox\.com\//.test(s)) return s.replace(/([?&])dl=0\b/, '$1raw=1');
+  return s;
+}
+
+/**
+ * Gambar dari Drive hanya tampil di website bila file dibagikan "Siapa saja yang memiliki link".
+ * Fungsi ini mengaturnya otomatis (sekali per file). paksa=true: dari formulir admin —
+ * galat dilaporkan agar admin tahu kenapa gambar tidak akan tampil.
+ */
+function publikkanGambar_(u, paksa) {
+  var id = idDriveGambar_(u);
+  if (!id) return;
+  var tanda = 'PUB_' + id;
+  if (!paksa && prop_(tanda)) return;
+  try {
+    var f = DriveApp.getFileById(id);
+    var a = f.getSharingAccess();
+    if (a !== DriveApp.Access.ANYONE_WITH_LINK && a !== DriveApp.Access.ANYONE) {
+      f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
+    prop_(tanda, '1');
+  } catch (e) {
+    prop_(tanda, 'x');
+    if (paksa) {
+      throw new Error('Gambar dari Google Drive belum bisa ditampilkan: akun sistem tidak bisa membagikan file itu. ' +
+        'Buka file di Drive › Bagikan › Akses umum: "Siapa saja yang memiliki link", lalu simpan lagi.');
+    }
+  }
+}
+
 /** Normalisasi nomor WA Indonesia → 62xxxxxxxxxx. Kosong bila tidak valid. */
 function normalWa_(s) {
   var d = String(s || '').replace(/[^\d]/g, '');
@@ -251,6 +308,13 @@ function pengaturan_(semua) {
     if (!semua && String(r.kunci).charAt(0) === '_') return;
     o[r.kunci] = r.nilai;
   });
+  if (!semua) {
+    KUNCI_GAMBAR_.forEach(function (k) {
+      if (!o[k]) return;
+      try { publikkanGambar_(o[k]); } catch (e) { /* abaikan */ }
+      o[k] = urlGambar_(o[k]);
+    });
+  }
   return o;
 }
 

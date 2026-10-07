@@ -39,6 +39,17 @@ var Demo = (function () {
     };
   }
 
+  /** Sama dengan katalogVideo_ di backend: channel yang punya video + playlist beserta urutannya. */
+  function katalogVideo(d) {
+    var kanal = (d.kanalVideo || []).map(function (k) {
+      var jml = d.video.filter(function (v) { return v.kanal_id === k.id; }).length;
+      var npl = (d.playlistVideo || []).filter(function (x) { return x.kanal === k.id; }).length;
+      return Object.assign({}, k, { jumlah: jml, playlist: npl });
+    }).filter(function (k) { return k.jumlah; });
+    var playlist = (d.playlistVideo || []).map(function (x) { return Object.assign({}, x, { jumlah: x.isi.length }); });
+    return { kanal: kanal, playlist: playlist };
+  }
+
   function tunda(v) { return new Promise(function (res) { setTimeout(function () { res(v); }, 120); }); }
   function ringkas(a) { var o = Object.assign({}, a); delete o.konten; return o; }
 
@@ -112,16 +123,31 @@ var Demo = (function () {
     },
     kajian: function (d) { return d.kajian; },
     video: function (d, p) {
-      var q = String(p.q || '').toLowerCase();
-      var list = d.video.filter(function (v) {
+      var kat = katalogVideo(d), q = String(p.q || '').toLowerCase();
+      var pl = p.playlist ? kat.playlist.filter(function (x) { return x.id === p.playlist; })[0] : null;
+      var kanalId = p.kanal || (pl ? pl.kanal : ''), kanalPl = kanalId || (kat.kanal.length === 1 ? kat.kanal[0].id : '');
+      var basis = pl ? pl.isi.map(function (id) { return d.video.filter(function (v) { return v.id === id; })[0]; }).filter(Boolean)
+        : d.video.filter(function (v) { return !kanalId || v.kanal_id === kanalId; });
+      var list = basis.filter(function (v) {
         return (!p.kategori || v.kategori === p.kategori) && (!q || (v.judul + ' ' + v.pemateri + ' ' + v.kanal).toLowerCase().indexOf(q) >= 0);
       }).map(namaKatVideo(d));
-      return { items: list, total: list.length, halaman: 1, jumlahHalaman: 1 };
+      return { items: list, total: list.length, halaman: 1, jumlahHalaman: 1, awal: 0, kanal: kat.kanal,
+        kanalAktif: kat.kanal.filter(function (k) { return k.id === kanalId; })[0] || null,
+        playlist: kat.playlist.filter(function (x) { return x.kanal === kanalPl; }),
+        playlistAktif: pl || null };
     },
     video_detail: function (d, p) {
       var v = d.video.filter(function (x) { return x.id === p.id; })[0];
       if (!v) throw new Error('Video tidak ditemukan.');
-      var o = namaKatVideo(d)(v);
+      var kat = katalogVideo(d), o = namaKatVideo(d)(v);
+      o.kanalInfo = kat.kanal.filter(function (k) { return k.id === v.kanal_id; })[0] || null;
+      var berisi = kat.playlist.filter(function (x) { return x.isi.indexOf(v.id) >= 0; });
+      o.playlistDi = berisi;
+      var pl = berisi.filter(function (x) { return x.id === p.playlist; })[0];
+      if (pl) {
+        var items = pl.isi.map(function (id) { return d.video.filter(function (x) { return x.id === id; })[0]; }).filter(Boolean);
+        o.playlist = { id: pl.id, judul: pl.judul, jumlah: items.length, posisi: pl.isi.indexOf(v.id) + 1, items: items };
+      }
       o.terkait = d.video.filter(function (x) { return x !== v && x.kategori === v.kategori; }).map(namaKatVideo(d));
       return o;
     },

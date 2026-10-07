@@ -64,7 +64,8 @@ Cek koneksi kapan saja di `https://USERNAME.github.io/REPO/cek.html`.
 | **Kajian** | Admin › Jadwal kajian. Isi lat/lng (klik kanan di Google Maps › salin koordinat) agar muncul di peta & bisa diurutkan dari yang terdekat. |
 | **Log lokasi** | Tersimpan permanen di sheet *LogLokasi*. Hapus hanya manual (centang › Hapus terpilih). **Unduh Excel (.xlsx)** tersedia di setiap tabel. |
 | **Teks situs** | Admin › Pengaturan situs (nama, hero, visi, misi, alamat, QRIS, embed peta, dll.). Bagian yang belum diisi otomatis disembunyikan dari website. |
-| **Katalog video** | Admin › Katalog video › + Tambah: tempel URL YouTube, judul & kanal terisi otomatis. Atau isi *Sumber video otomatis* (URL kanal `@nama` / playlist) agar video baru masuk tiap jam. Atur kategori di *Kategori video*; centang *Unggulan* agar tampil paling depan. |
+| **Logo & gambar** | Tempel link berbagi Google Drive apa adanya (`…/file/d/…/view`) — diubah otomatis jadi link gambar, dan file Drive milik akun yayasan langsung dibagikan *Siapa saja yang memiliki link* saat disimpan dari panel admin. Link GitHub (`…/blob/…`), Dropbox, dan Imgur juga dikenali. Link Google Photos/Instagram/Facebook tidak bisa dipakai. Form admin menampilkan pratinjau; bila gambar gagal dimuat, website menampilkan ikon cadangan (bukan gambar rusak). |
+| **Katalog video** | Lihat bagian 6b. |
 
 Mengedit langsung di Google Sheet juga boleh; cache website segar otomatis.
 
@@ -72,16 +73,33 @@ Mengedit langsung di Google Sheet juga boleh; cache website segar otomatis.
 
 Kontributor cukup menyetor **satu sumber** (lewat formulir `#/kontributor/daftar` atau diisi admin):
 
-- **Folder Google Drive** yang dibagikan *Siapa saja yang memiliki link · Pelihat*. Setiap Google Doc = 1 artikel, nama file = judul, subfolder = kategori (bila namanya cocok). Doc yang dihapus dari folder otomatis jadi *Tidak tayang*.
+- **Folder Google Drive** yang dibagikan *Siapa saja yang memiliki link · Pelihat*. Setiap Google Doc = 1 artikel, nama file = judul. **Subfolder dibaca sampai 5 tingkat**, termasuk pintasan (shortcut) ke Doc; kategori diambil dari nama subfolder terdalam yang cocok dengan nama kategori (mis. `Opini/2026/Pendidikan` → Pendidikan; nomor di depan nama folder diabaikan). Hanya format Google Docs yang dibaca (bukan .docx/PDF). Doc yang dihapus dari folder otomatis jadi *Tidak tayang*.
 - **Feed website**: RSS 2.0, Atom, atau JSON Feed (WordPress `/feed`, Blogger `/feeds/posts/default`, atau website yayasan lain yang memakai sistem ini).
 
-Sinkron berjalan tiap jam (atau tombol **Sinkron sekarang**). Bawaan kontributor & artikel barunya **Tayang**; ubah per kontributor atau per artikel ke **Tidak tayang** kapan saja. Profil kontributor (nama, foto, website, biografi) tampil di halaman artikel dan `#/kontributor/slug`. Email/WA kontributor tidak pernah dikirim ke publik.
+Sinkron berjalan **tiap jam** (atau tombol **Sinkron sekarang**). Folder: tidak ada batas jumlah Doc; hanya Doc baru/berubah yang diproses, dan bila satu putaran melewati ±4,5 menit sisanya dilanjutkan jam berikutnya. Feed: sebanyak item yang dimuat feed itu (umumnya 10–20 terbaru), lalu terkumpul dari waktu ke waktu. Bawaan kontributor & artikel barunya **Tayang**; ubah per kontributor atau per artikel ke **Tidak tayang** kapan saja. Profil kontributor (nama, foto, website, biografi) tampil di halaman artikel dan `#/kontributor/slug`. Email/WA kontributor tidak pernah dikirim ke publik.
 
 **Kurasi editor.** Artikel kontributor baru berstatus kurasi *Belum dikurasi* (tetap tayang sesuai status). Di Admin › Artikel, filter cepat **Belum dikurasi** menampilkan antreannya. Isi **Judul tayang (kurasi)** / **Ringkasan tayang (kurasi)** untuk mengganti teks dari kontributor, misalnya nama file bernomor. Isian kurasi tidak tertimpa sinkron, dan nama editor + waktunya tercatat. Nomor urut di depan nama file (`01. Judul`, `3 - Judul`, `(2) Judul`, `Bab 2: Judul`) juga sudah dibersihkan otomatis (`BERSIHKAN_NOMOR_JUDUL`).
 
 **Filter penulis & pemerataan.** Halaman Artikel punya baris filter per penulis (yayasan + tiap kontributor) dengan kartu perkenalan kontributor. Daftar artikel dan beranda menyusun tulisan 30 hari terakhir bergiliran antar penulis agar tidak didominasi satu kontributor (`PEMERATAAN_ARTIKEL`, `PEMERATAAN_HARI`). Feed RSS tetap urut tanggal.
 
 Atur bawaan di `00_Konfigurasi.gs`: `KONTRIBUTOR_STATUS_DEFAULT`, `ARTIKEL_KONTRIBUTOR_STATUS_DEFAULT`, `PENDAFTARAN_KONTRIBUTOR_TERBUKA`.
+
+## 6b. Video: channel & playlist YouTube
+
+- **Admin › Channel & playlist YouTube › + Tambah**: tempel URL channel (`youtube.com/@nama`) — satu baris per channel bagian yayasan — atau URL playlist. Nama & foto channel terisi sendiri; atur *Urutan* untuk posisi di navigasi. Klik **Sinkron sekarang** setelah menambah.
+- **Admin › Playlist**: terisi otomatis. Matikan *Tampil* untuk menyembunyikan, ubah *Judul* / *Urutan* sesuka hati (tidak tertimpa sinkron).
+- **Admin › Katalog video**: video satuan (tempel URL), kategori, pemateri, *Unggulan*.
+- Website: halaman Video punya navigasi **channel** (foto + jumlah video) → **playlist** channel itu (urut sesuai YouTube, bernomor) → halaman tonton dengan daftar playlist, *Sebelumnya/Berikutnya*.
+
+**Seberapa banyak yang diambil.** Sinkron otomatis tiap jam.
+
+| | Dengan YouTube Data API (disarankan) | Tanpa (cadangan RSS) |
+|---|---|---|
+| Video channel | **Semua**. Channel besar diimpor bertahap (±4,5 menit per putaran, dilanjutkan jam berikutnya); setelah itu hanya video baru | ±15 video terbaru setiap sinkron, terkumpul dari waktu ke waktu |
+| Playlist channel | Semua playlist + seluruh isinya, diperbarui sehari sekali | Tidak terbaca; tambahkan URL playlist sebagai baris tersendiri (±15 video teratasnya) |
+| Kuota | ±1–2 unit per channel per jam dari jatah gratis 10.000/hari | — |
+
+**Mengaktifkan YouTube Data API (sekali):** `pasang/appsscript.json` versi ini sudah memuatnya. Tempel ulang isinya ke `appsscript.json` di editor Apps Script, lalu di panel kiri **Layanan (+)** pastikan *YouTube Data API v3* tercantum (bila belum: pilih › Tambahkan). Jalankan `perbaruiSistem` sekali dari editor untuk memberi izin baru. Bila API belum aktif, sinkron tetap jalan lewat RSS dan kolom *Hasil* menjelaskan penyebabnya.
 
 ## 7. API & feed (untuk mitra yang ingin mirror)
 

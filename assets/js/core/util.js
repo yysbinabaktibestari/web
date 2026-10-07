@@ -98,14 +98,41 @@ var U = (function () {
     var c = 'chip c-' + (warna || 'netral');
     return href ? '<a class="' + c + '" href="' + esc(href) + '">' + esc(teks) + '</a>' : '<span class="' + c + '">' + esc(teks) + '</span>';
   }
+  /** Link berbagi (Google Drive, GitHub, Dropbox, Imgur) → URL gambar langsung. Sama dengan urlGambar_ di backend. */
+  function urlGambar(u) {
+    var s = String(u || '').trim();
+    if (!s || /drive\.google\.com\/thumbnail\?/.test(s)) return s;
+    var m = /^https?:\/\/(drive|docs)\.google\.com\//i.test(s) && (s.match(/\/file\/d\/([\w-]{20,})/) || s.match(/[?&]id=([\w-]{20,})/));
+    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200';
+    m = s.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+    if (m) return 'https://raw.githubusercontent.com/' + m[1] + '/' + m[2] + '/' + m[3];
+    m = s.match(/^https?:\/\/(?:www\.)?imgur\.com\/([A-Za-z0-9]{5,8})$/);
+    if (m) return 'https://i.imgur.com/' + m[1] + '.png';
+    if (/^https?:\/\/(www\.)?dropbox\.com\//.test(s)) return s.replace(/([?&])dl=0\b/, '$1raw=1');
+    return s;
+  }
   function gambar(url, alt, label, kelas) {
-    if (url) return '<div class="' + (kelas || '') + '"><img src="' + esc(url) + '" alt="' + esc(alt || '') + '" loading="lazy"></div>';
+    if (url) return '<div class="' + (kelas || '') + '" data-gambar><img src="' + esc(urlGambar(url)) + '" alt="' + esc(alt || '') + '" loading="lazy"></div>';
     return '<div class="' + (kelas || '') + ' sampul-kosong" aria-hidden="true">' + ikon('buku', 40) + '</div>';
   }
   function avatar(nama, foto, kelas) {
     var inisial = String(nama || '?').replace(/^[^A-Za-z0-9À-ɏ]+/, '').replace(/^(ust\.?|ustadz|dr\.?|h\.)\s*/i, '').trim().charAt(0).toUpperCase() || '?';
-    return '<span class="avatar ' + (kelas || '') + '">' + (foto ? '<img src="' + esc(foto) + '" alt="" loading="lazy">' : esc(inisial)) + '</span>';
+    return '<span class="avatar ' + (kelas || '') + '" data-inisial="' + esc(inisial) + '">' + (foto ? '<img src="' + esc(urlGambar(foto)) + '" alt="" loading="lazy">' : esc(inisial)) + '</span>';
   }
+
+  /* Gambar yang gagal dimuat (link salah / belum publik) diganti tampilan cadangan, bukan ikon rusak. */
+  document.addEventListener('error', function (ev) {
+    var img = ev.target;
+    if (!img || img.tagName !== 'IMG' || img.hasAttribute('onerror') || img.dataset.gagal) return;
+    img.dataset.gagal = '1';
+    if (window.console) console.warn('Gambar gagal dimuat (pastikan link publik & berupa gambar): ' + img.src);
+    var p = img.parentNode;
+    if (!p) return;
+    if (p.classList.contains('logo-tanda')) { p.innerHTML = '<span style="color:#fff">' + ikon('buku', 22) + '</span>'; return; }
+    if (p.classList.contains('avatar')) { p.textContent = p.getAttribute('data-inisial') || ''; return; }
+    if (p.hasAttribute('data-gambar')) { p.classList.add('sampul-kosong'); p.innerHTML = ikon('buku', 40); return; }
+    img.remove();
+  }, true);
   function domain(url) { try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url || ''; } }
 
   /* ---------- Lain-lain ---------- */
@@ -159,7 +186,7 @@ var U = (function () {
   function bacaLokal(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
   return { esc: esc, html: html, tgl: tgl, bagianTgl: bagianTgl, keTanggal: keTanggal, rupiah: rupiah, ikon: ikon,
-    chip: chip, gambar: gambar, avatar: avatar, domain: domain, muatSkrip: muatSkrip, muatCss: muatCss, toast: toast,
+    chip: chip, gambar: gambar, avatar: avatar, urlGambar: urlGambar, domain: domain, muatSkrip: muatSkrip, muatCss: muatCss, toast: toast,
     normalWa: normalWa, jarakKm: jarakKm, hash: hash, salin: salin, perangkat: perangkat,
     simpanLokal: simpanLokal, bacaLokal: bacaLokal };
 })();

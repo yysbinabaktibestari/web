@@ -65,7 +65,7 @@
             '</div>';
           }).join('') +
           (s.qris ? '<div class="kartu rekening" style="align-items:center;text-align:center"><strong style="font-size:18px">QRIS</strong>' +
-            '<img src="' + esc(s.qris) + '" alt="Kode QRIS donasi" style="width:200px;border-radius:12px">' +
+            '<img src="' + esc(U.urlGambar(s.qris)) + '" alt="Kode QRIS donasi" style="width:200px;border-radius:12px">' +
             '<span class="redup" style="font-size:14px">Pindai dari aplikasi bank atau dompet digital.</span></div>' : '') +
           '</div></section>') +
       '</div>' +

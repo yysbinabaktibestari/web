@@ -68,7 +68,7 @@ var App = (function () {
       l.rel = 'alternate'; l.type = 'application/rss+xml'; l.title = nama || 'RSS'; l.href = data.feed;
       document.head.appendChild(l);
     }
-    $('logo').innerHTML = '<span class="logo-tanda">' + (s.logo ? '<img src="' + U.esc(s.logo) + '" alt="">' : '<span style="color:#fff">' + U.ikon('buku', 22) + '</span>') + '</span>' +
+    $('logo').innerHTML = '<span class="logo-tanda">' + (s.logo ? '<img src="' + U.esc(U.urlGambar(s.logo)) + '" alt="">' : '<span style="color:#fff">' + U.ikon('buku', 22) + '</span>') + '</span>' +
       '<span class="logo-nama">' + U.esc(nama) + '</span>';
 
     var navs = Object.keys(modul).map(function (id) { return modul[id]; }).filter(function (m) { return m.nav; });
