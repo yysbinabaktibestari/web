@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yeseva+One&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--biru:#18548C;--biru-tua:#103A62;--gelap:#0E2A47;--biru-muda:#E6EEF6;--emas-muda:#F6EDDA;--emas-teks:#6B4A06;--karat:#AF5329;--karat-muda:#F6E5DD;--karat-teks:#7D3519;--latar:#F7F6F2;--tinta:#14202C;--redup:#4A5563;--garis:#DCE1E7;--garis-input:#B5C0CC;--abu:#EEF1F4}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--latar);color:var(--tinta);font:15px/1.55 'Plus Jakarta Sans',system-ui,sans-serif}
+  h1,h2{font-family:'Yeseva One',Georgia,serif;font-weight:400;margin:0}
+  button,input,select,textarea{font:inherit;color:inherit}
+  a{color:var(--biru)}
+  :focus-visible{outline:3px solid #E3B04B;outline-offset:2px}
+  [hidden]{display:none!important}
+  .btn{height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--garis-input);background:#fff;font-weight:600;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .btn:hover{border-color:var(--biru)}
+  .btn.utama{background:var(--biru);border-color:var(--biru);color:#fff}
+  .btn.bahaya{background:var(--karat);border-color:var(--karat);color:#fff}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .login form{width:100%;max-width:380px;background:#fff;border:1px solid var(--garis);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:14px}
+  .login h1{font-size:28px}
+  .medan{display:flex;flex-direction:column;gap:4px}
+  .medan label{font-size:13px;font-weight:600;color:var(--redup)}
+  .medan input:not([type=checkbox]),.medan select,.medan textarea{min-height:42px;padding:8px 12px;border-radius:10px;border:1px solid var(--garis-input);background:#fff;width:100%}
+  .medan textarea{min-height:96px;resize:vertical}
+  .medan small{color:var(--redup);font-size:12.5px}
+  .medan .cek{display:flex;align-items:center;gap:10px;font-weight:500;color:var(--tinta);font-size:15px}
+  .medan .cek input{width:20px;height:20px;accent-color:var(--biru)}
+  .medan img{max-width:160px;max-height:100px;border-radius:8px;margin-top:6px;object-fit:cover}
+  .galat{color:var(--karat-teks);background:var(--karat-muda);padding:10px 12px;border-radius:10px;font-size:14px}
+  .top{background:var(--gelap);color:#fff;display:flex;align-items:center;gap:14px;padding:10px 20px;flex-wrap:wrap}
+  .top .brand{font-family:'Yeseva One',Georgia,serif;font-size:19px}
+  .top .sub{font-size:13px;color:#D6E0EC;font-weight:600}
+  .top .kanan{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .top a,.top button{color:#D6E0EC;background:transparent;border:1px solid #2C4C6E;border-radius:8px;padding:8px 12px;text-decoration:none;font-size:14px;cursor:pointer}
+  #menuBtn{display:none}
+  .layout{display:flex;min-height:calc(100vh - 60px)}
+  nav#side{width:250px;flex:0 0 250px;background:#fff;border-right:1px solid var(--garis);padding:16px 12px;overflow-y:auto}
+  nav#side .grup{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--redup);margin:16px 8px 6px}
+  nav#side .grup:first-child{margin-top:0}
+  nav#side button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:9px 10px;border-radius:8px;cursor:pointer;font-weight:500}
+  nav#side button:hover{background:var(--abu)}
+  nav#side button.aktif{background:var(--biru-muda);color:var(--biru);font-weight:700}
+  main{flex:1;min-width:0;padding:28px 24px 64px}
+  .kepala{display:flex;flex-direction:column;gap:4px;margin-bottom:18px}
+  .kepala h1{font-size:32px;line-height:1.15}
+  .kepala p{margin:0;color:var(--redup)}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+  .toolbar input[type=search]{height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--garis-input);min-width:220px;flex:1 1 220px;max-width:340px}
+  .toolbar .sela{flex:1}
+  .kartu{background:#fff;border:1px solid var(--garis);border-radius:16px;overflow:hidden}
+  .tabel-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:10px 12px;border-bottom:1px solid var(--abu);text-align:left;vertical-align:top}
+  th{color:var(--redup);font-weight:600;background:#FBFBFA;position:sticky;top:0;white-space:nowrap}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:#F8FAFC}
+  tbody tr.pilih{background:#F2F6FB}
+  td.c{width:40px;cursor:default}
+  td.c input,th.c input{width:18px;height:18px;accent-color:var(--biru)}
+  .sel-teks{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chip{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+  .c-biru{background:var(--biru-muda);color:var(--biru-tua)}.c-emas{background:var(--emas-muda);color:var(--emas-teks)}.c-karat{background:var(--karat-muda);color:var(--karat-teks)}.c-abu{background:var(--abu);color:var(--redup)}
+  td img{width:44px;height:32px;object-fit:cover;border-radius:6px}
+  .kosong{padding:40px;text-align:center;color:var(--redup)}
+  .paging{display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:12px;font-size:14px;color:var(--redup)}
+  .drawer{position:fixed;inset:0;background:rgba(14,42,71,.35);display:flex;justify-content:flex-end;z-index:20}
+  .drawer form{width:min(560px,100%);height:100%;background:#fff;display:flex;flex-direction:column}
+  .drawer .dk{padding:20px 24px;border-bottom:1px solid var(--garis);display:flex;align-items:center;gap:12px}
+  .drawer .dk h2{font-size:24px;flex:1}
+  .drawer .isi{padding:20px 24px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;flex:1}
+  .drawer .kaki{padding:16px 24px;border-top:1px solid var(--garis);display:flex;gap:8px;justify-content:flex-end}
+  .modal{position:fixed;inset:0;background:rgba(14,42,71,.35);display:flex;align-items:center;justify-content:center;padding:16px;z-index:30}
+  .modal .kotak{background:#fff;border-radius:18px;padding:24px;width:min(640px,100%);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:14px}
+  .modal h2{font-size:22px}
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--gelap);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:40;max-width:90vw}
+  .muat{opacity:.55;pointer-events:none}
+  @media (max-width:860px){
+    #menuBtn{display:inline-block}
+    nav#side{position:fixed;top:0;left:0;bottom:0;z-index:25;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.2)}
+    nav#side.buka{transform:none}
+    main{padding:20px 14px 64px}
+  }
+</style>
+</head>
+<body>
+
+<div id="login" class="login" hidden>
+  <form id="formLogin">
+    <h1 id="loginNama">Panel Admin</h1>
+    <p style="margin:0;color:var(--redup)">Masuk untuk mengelola website.</p>
+    <div class="medan">
+      <label for="pw">Password</label>
+      <input id="pw" type="password" autocomplete="current-password" required>
+    </div>
+    <div id="loginGalat" class="galat" hidden></div>
+    <button class="btn utama" type="submit" style="justify-content:center;height:46px">Masuk</button>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="top">
+    <button id="menuBtn" type="button" aria-label="Buka menu">Menu</button>
+    <span class="brand" id="brand"></span>
+    <span class="sub">Panel Admin</span>
+    <span class="kanan">
+      <a id="lihatSitus" href="#" target="_blank" rel="noopener">Lihat website</a>
+      <a id="bukaSheet" href="#" target="_blank" rel="noopener">Google Sheet</a>
+      <button id="keluar" type="button">Keluar</button>
+    </span>
+  </header>
+  <div class="layout">
+    <nav id="side" aria-label="Menu admin"></nav>
+    <main id="main"><p class="kosong">Memuat…</p></main>
+  </div>
+</div>
+
+<div id="drawer" class="drawer" hidden></div>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" role="status" hidden></div>
+
+<script>
+var S = { token: null, skema: null, sheet: null, modul: null, hal: 1, q: '', baris: [], total: 0, per: 50, pilih: {} };
+try { S.token = sessionStorage.getItem('adm_t'); } catch (e) {}
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+function toast(t) { var el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { el.hidden = true; }, 3500); }
+function pesanGalat(e) { var m = String((e && e.message) || e); return m.replace(/^Error:\s*/, '').replace(/^Exception:\s*/, ''); }
+
+function panggil(metode) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function (res, rej) {
+    google.script.run.withSuccessHandler(res).withFailureHandler(function (e) {
+      if (pesanGalat(e).indexOf('SESI_HABIS') >= 0) { keluar(true); rej(new Error('Sesi habis, silakan masuk lagi.')); return; }
+      rej(e);
+    }).adminPanggil(S.token, metode, args);
+  });
+}
+
+/* ---------- Login ---------- */
+$('formLogin').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  var btn = ev.target.querySelector('button'); btn.disabled = true; $('loginGalat').hidden = true;
+  google.script.run.withSuccessHandler(function (r) {
+    S.token = r.token; try { sessionStorage.setItem('adm_t', r.token); } catch (e) {}
+    btn.disabled = false; $('pw').value = ''; mulai();
+  }).withFailureHandler(function (e) {
+    btn.disabled = false; $('loginGalat').textContent = pesanGalat(e); $('loginGalat').hidden = false;
+  }).adminMasuk($('pw').value);
+});
+
+function keluar(habis) {
+  if (!habis && S.token) google.script.run.adminKeluar(S.token);
+  S.token = null; try { sessionStorage.removeItem('adm_t'); } catch (e) {}
+  $('app').hidden = true; $('login').hidden = false; $('pw').focus();
+  if (habis) { $('loginGalat').textContent = 'Sesi berakhir. Silakan masuk lagi.'; $('loginGalat').hidden = false; }
+}
+$('keluar').onclick = function () { keluar(false); };
+$('menuBtn').onclick = function () { $('side').classList.toggle('buka'); };
+
+function mulai() {
+  if (!S.token) { $('login').hidden = false; $('pw').focus(); return; }
+  panggil('skema').then(function (sk) {
+    S.skema = sk;
+    $('login').hidden = true; $('app').hidden = false;
+    $('brand').textContent = sk.situs.nama;
+    $('lihatSitus').href = sk.situs.url;
+    $('bukaSheet').href = sk.situs.sheet || '#';
+    menu();
+    var m0 = sk.modul[0];
+    var simpanan = null; try { simpanan = JSON.parse(sessionStorage.getItem('adm_buka') || 'null'); } catch (e) {}
+    var cari = simpanan && cariSheet(simpanan[0], simpanan[1]);
+    if (cari) buka(cari.m, cari.s); else if (m0) buka(m0, m0.sheets[0]);
+  }).catch(function (e) { if (S.token) { $('main').innerHTML = '<p class="galat">' + esc(pesanGalat(e)) + '</p>'; $('app').hidden = false; } });
+}
+
+function cariSheet(mid, nama) {
+  for (var i = 0; i < S.skema.modul.length; i++) {
+    var m = S.skema.modul[i];
+    if (m.id !== mid) continue;
+    for (var j = 0; j < m.sheets.length; j++) if (m.sheets[j].nama === nama) return { m: m, s: m.sheets[j] };
+  }
+  return null;
+}
+
+function menu() {
+  var h = '';
+  S.skema.modul.forEach(function (m) {
+    h += '<div class="grup">' + esc(m.judul) + '</div>';
+    m.sheets.forEach(function (s) {
+      h += '<button type="button" data-m="' + esc(m.id) + '" data-s="' + esc(s.nama) + '">' + esc(s.judul) + '</button>';
+    });
+  });
+  $('side').innerHTML = h;
+  $('side').querySelectorAll('button').forEach(function (b) {
+    b.onclick = function () { var c = cariSheet(b.dataset.m, b.dataset.s); buka(c.m, c.s); $('side').classList.remove('buka'); };
+  });
+}
+
+function buka(m, s) {
+  S.modul = m; S.sheet = s; S.hal = 1; S.q = ''; S.pilih = {};
+  try { sessionStorage.setItem('adm_buka', JSON.stringify([m.id, s.nama])); } catch (e) {}
+  $('side').querySelectorAll('button').forEach(function (b) { b.classList.toggle('aktif', b.dataset.m === m.id && b.dataset.s === s.nama); });
+  var alat = s.alat.map(function (a) {
+    return '<button type="button" class="btn ' + (a.gaya === 'utama' ? 'utama' : '') + '" data-alat="' + esc(a.id) + '">' + esc(a.label) + '</button>';
+  }).join('');
+  $('main').innerHTML =
+    '<div class="kepala"><h1>' + esc(s.judul) + '</h1>' + (s.keterangan ? '<p>' + esc(s.keterangan) + '</p>' : '') + '</div>' +
+    '<div class="toolbar">' +
+      '<input type="search" id="cari" placeholder="Cari…" aria-label="Cari di tabel">' +
+      (s.bisaTambah ? '<button type="button" class="btn utama" id="tambah">+ Tambah</button>' : '') +
+      alat +
+      '<span class="sela"></span>' +
+      '<button type="button" class="btn" id="ekspor">Unduh Excel (.xlsx)</button>' +
+      (s.bisaHapus ? '<button type="button" class="btn" id="hapus" disabled>Hapus terpilih (0)</button>' : '') +
+    '</div>' +
+    '<div class="kartu"><div class="tabel-wrap" id="tabel"></div><div class="paging" id="paging"></div></div>';
+  var t;
+  $('cari').oninput = function (ev) { clearTimeout(t); t = setTimeout(function () { S.q = ev.target.value; S.hal = 1; muat(); }, 350); };
+  if ($('tambah')) $('tambah').onclick = function () { form(null); };
+  $('ekspor').onclick = ekspor;
+  if ($('hapus')) $('hapus').onclick = hapus;
+  $('main').querySelectorAll('[data-alat]').forEach(function (b) {
+    b.onclick = function () { jalankanAlat(s.alat.filter(function (a) { return a.id === b.dataset.alat; })[0]); };
+  });
+  muat();
+}
+
+function kolomTampil() {
+  return S.sheet.kolom.filter(function (c) { return c.daftar !== false && c.t !== 'id'; }).slice(0, 8);
+}
+
+function muat() {
+  $('tabel').classList.add('muat');
+  panggil('daftar', S.sheet.nama, { q: S.q, halaman: S.hal, per: S.per }).then(function (r) {
+    S.baris = r.baris; S.total = r.total;
+    $('tabel').classList.remove('muat');
+    tabel();
+  }).catch(function (e) { $('tabel').innerHTML = '<p class="galat" style="margin:16px">' + esc(pesanGalat(e)) + '</p>'; });
+}
+
+function nilaiSel(c, v) {
+  if (v === null || v === undefined || v === '') return '<span style="color:#9AA3AF">—</span>';
+  if (c.t === 'bool') return v ? '<span class="chip c-biru">Ya</span>' : '<span class="chip c-abu">Tidak</span>';
+  if (c.t === 'image') return '<img src="' + esc(v) + '" alt="" loading="lazy">';
+  if (c.t === 'url') return '<a href="' + esc(v) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">Buka</a>';
+  if (c.t === 'wa') return '<a href="https://wa.me/' + esc(v) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">' + esc(v) + '</a>';
+  if (c.t === 'datetime') return esc(String(v).replace('T', ' ').slice(0, 16));
+  if (c.t === 'number') return esc(Number(v).toLocaleString('id-ID'));
+  if (c.t === 'ref') {
+    var o = (c.opsiRef || []).filter(function (x) { return x.v === String(v); })[0];
+    return esc(o ? o.l : v);
+  }
+  if (c.t === 'select') {
+    var warna = { 'Tayang': 'c-biru', 'Diterima': 'c-biru', 'Draf': 'c-emas', 'Belum dicek': 'c-emas', 'Tidak tayang': 'c-abu', 'Ditolak': 'c-karat' }[v];
+    if (warna) return '<span class="chip ' + warna + '">' + esc(v) + '</span>';
+  }
+  return '<div class="sel-teks" title="' + esc(v) + '">' + esc(v) + '</div>';
+}
+
+function tabel() {
+  var kol = kolomTampil(), s = S.sheet, kunci = s.kunci;
+  if (!S.baris.length) {
+    $('tabel').innerHTML = '<p class="kosong">' + (S.q ? 'Tidak ada yang cocok.' : 'Belum ada data.') + '</p>';
+  } else {
+    var h = '<table><thead><tr><th class="c"><input type="checkbox" id="semua" aria-label="Pilih semua"></th>' +
+      kol.map(function (c) { return '<th>' + esc(c.l || c.k) + '</th>'; }).join('') + '</tr></thead><tbody>';
+    S.baris.forEach(function (r, i) {
+      var k = String(r[kunci]);
+      h += '<tr data-i="' + i + '" class="' + (S.pilih[k] ? 'pilih' : '') + '"><td class="c"><input type="checkbox" data-k="' + esc(k) + '" aria-label="Pilih baris"' + (S.pilih[k] ? ' checked' : '') + '></td>' +
+        kol.map(function (c) { return '<td>' + nilaiSel(c, r[c.k]) + '</td>'; }).join('') + '</tr>';
+    });
+    $('tabel').innerHTML = h + '</tbody></table>';
+    $('tabel').querySelectorAll('tbody tr').forEach(function (tr) {
+      tr.onclick = function (ev) { if (ev.target.closest('td.c')) return; form(S.baris[Number(tr.dataset.i)]); };
+    });
+    $('tabel').querySelectorAll('td.c input').forEach(function (cb) {
+      cb.onchange = function () { if (cb.checked) S.pilih[cb.dataset.k] = 1; else delete S.pilih[cb.dataset.k]; cb.closest('tr').classList.toggle('pilih', cb.checked); hitungPilih(); };
+    });
+    $('semua').onchange = function (ev) {
+      $('tabel').querySelectorAll('td.c input').forEach(function (cb) { cb.checked = ev.target.checked; cb.onchange(); });
+    };
+  }
+  var hal = Math.max(1, Math.ceil(S.total / S.per));
+  $('paging').innerHTML = S.total + ' baris · halaman ' + S.hal + ' / ' + hal +
+    ' <button class="btn" id="prev"' + (S.hal <= 1 ? ' disabled' : '') + '>‹</button><button class="btn" id="next"' + (S.hal >= hal ? ' disabled' : '') + '>›</button>';
+  $('prev').onclick = function () { S.hal--; muat(); };
+  $('next').onclick = function () { S.hal++; muat(); };
+  hitungPilih();
+}
+
+function hitungPilih() {
+  var n = Object.keys(S.pilih).length;
+  if ($('hapus')) { $('hapus').disabled = !n; $('hapus').textContent = 'Hapus terpilih (' + n + ')'; $('hapus').className = 'btn' + (n ? ' bahaya' : ''); }
+}
+
+/* ---------- Formulir ---------- */
+function medan(c, v, awalan) {
+  var id = (awalan || 'f_') + c.k, ro = c.ro ? ' disabled' : '', req = c.wajib ? ' required' : '';
+  var lab = '<label for="' + id + '">' + esc(c.l || c.k) + (c.wajib ? ' *' : '') + '</label>';
+  var val = v === null || v === undefined ? '' : v, inp;
+  if (c.t === 'bool') {
+    return '<div class="medan"><label class="cek"><input type="checkbox" id="' + id + '" name="' + esc(c.k) + '"' + (val ? ' checked' : '') + ro + '> ' + esc(c.l || c.k) + '</label>' + (c.bantuan ? '<small>' + esc(c.bantuan) + '</small>' : '') + '</div>';
+  }
+  if (c.t === 'textarea') inp = '<textarea id="' + id + '" name="' + esc(c.k) + '"' + ro + req + '>' + esc(val) + '</textarea>';
+  else if (c.t === 'select' || c.t === 'ref') {
+    var opsi = c.t === 'ref' ? (c.opsiRef || []) : (c.opsi || []).map(function (o) { return { v: o, l: o }; });
+    inp = '<select id="' + id + '" name="' + esc(c.k) + '"' + ro + req + '><option value="">—</option>' +
+      opsi.map(function (o) { return '<option value="' + esc(o.v) + '"' + (String(val) === String(o.v) ? ' selected' : '') + '>' + esc(o.l) + '</option>'; }).join('') + '</select>';
+  } else {
+    var tipe = { number: 'number', date: 'date', datetime: 'datetime-local', url: 'url', image: 'url', email: 'email', wa: 'tel' }[c.t] || 'text';
+    if (c.t === 'datetime') val = String(val).slice(0, 16);
+    inp = '<input id="' + id + '" name="' + esc(c.k) + '" type="' + tipe + '"' + (tipe === 'number' ? ' step="any"' : '') + ' value="' + esc(val) + '"' + ro + req + '>';
+    if (c.t === 'image' && val) inp += '<img src="' + esc(val) + '" alt="">';
+    if (c.t === 'url' && val) inp += '<small><a href="' + esc(val) + '" target="_blank" rel="noopener">Buka tautan</a></small>';
+  }
+  return '<div class="medan">' + lab + inp + (c.bantuan ? '<small>' + esc(c.bantuan) + '</small>' : '') + '</div>';
+}
+
+function ambilNilai(akar, kolom) {
+  var o = {};
+  kolom.forEach(function (c) {
+    var el = akar.querySelector('[name="' + c.k + '"]');
+    if (!el || el.disabled) return;
+    if (c.t === 'bool') o[c.k] = el.checked;
+    else if (c.t === 'number') o[c.k] = el.value === '' ? '' : Number(el.value);
+    else if (c.t === 'datetime') o[c.k] = el.value ? el.value + ':00' + S.skema.situs.offset : '';
+    else o[c.k] = el.value.trim();
+  });
+  return o;
+}
+
+function form(r) {
+  var s = S.sheet, kunci = s.kunci, baru = !r;
+  var kol = s.kolom.filter(function (c) { return c.t !== 'id'; });
+  $('drawer').innerHTML = '<form novalidate>' +
+    '<div class="dk"><h2>' + (baru ? 'Tambah' : 'Ubah') + ' · ' + esc(s.judul) + '</h2><button type="button" class="btn" data-tutup>Tutup</button></div>' +
+    '<div class="isi">' + kol.map(function (c) { return medan(c, r ? r[c.k] : c.bawaan); }).join('') + '<div id="formGalat" class="galat" hidden></div></div>' +
+    '<div class="kaki">' + (!baru && s.bisaHapus ? '<button type="button" class="btn" id="hapusSatu" style="margin-right:auto;color:#7D3519">Hapus</button>' : '') +
+    '<button type="button" class="btn" data-tutup>Batal</button><button type="submit" class="btn utama">Simpan</button></div></form>';
+  var d = $('drawer'); d.hidden = false;
+  var f = d.querySelector('form');
+  d.querySelectorAll('[data-tutup]').forEach(function (b) { b.onclick = tutupDrawer; });
+  d.onclick = function (ev) { if (ev.target === d) tutupDrawer(); };
+  var pertama = f.querySelector('input:not([disabled]),textarea,select'); if (pertama) pertama.focus();
+  if ($('hapusSatu')) $('hapusSatu').onclick = function () {
+    if (!confirm('Hapus baris ini permanen dari Google Sheet?')) return;
+    panggil('hapus', s.nama, [r[kunci]]).then(function () { tutupDrawer(); toast('Terhapus.'); muat(); }).catch(function (e) { alert(pesanGalat(e)); });
+  };
+  f.onsubmit = function (ev) {
+    ev.preventDefault();
+    var data = ambilNilai(f, kol);
+    if (!baru && kunci === 'id') data.id = r.id;
+    var tombol = f.querySelector('[type=submit]'); tombol.disabled = true; tombol.textContent = 'Menyimpan…';
+    panggil('simpan', s.nama, data, baru ? null : r[kunci]).then(function () {
+      tutupDrawer(); toast('Tersimpan.'); muat();
+    }).catch(function (e) {
+      tombol.disabled = false; tombol.textContent = 'Simpan';
+      $('formGalat').textContent = pesanGalat(e); $('formGalat').hidden = false;
+    });
+  };
+}
+function tutupDrawer() { $('drawer').hidden = true; $('drawer').innerHTML = ''; }
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { if (!$('modal').hidden) tutupModal(); else if (!$('drawer').hidden) tutupDrawer(); } });
+
+/* ---------- Hapus, ekspor, alat ---------- */
+function hapus() {
+  var ids = Object.keys(S.pilih);
+  if (!ids.length || !confirm('Hapus ' + ids.length + ' baris permanen dari Google Sheet?')) return;
+  panggil('hapus', S.sheet.nama, ids).then(function (r) { S.pilih = {}; toast(r.terhapus + ' baris dihapus.'); muat(); })
+    .catch(function (e) { alert(pesanGalat(e)); });
+}
+
+function ekspor() {
+  var b = $('ekspor'); b.disabled = true; b.textContent = 'Menyiapkan…';
+  panggil('ekspor', S.sheet.nama, S.q).then(function (r) {
+    var bin = atob(r.base64), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    var a = document.createElement('a'); a.href = url; a.download = r.nama; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    b.disabled = false; b.textContent = 'Unduh Excel (.xlsx)';
+  }).catch(function (e) { b.disabled = false; b.textContent = 'Unduh Excel (.xlsx)'; alert(pesanGalat(e)); });
+}
+
+function modal(html) { $('modal').innerHTML = '<div class="kotak" role="dialog" aria-modal="true">' + html + '</div>'; $('modal').hidden = false; }
+function tutupModal() { $('modal').hidden = true; $('modal').innerHTML = ''; }
+$('modal').onclick = function (ev) { if (ev.target === $('modal')) tutupModal(); };
+
+function jalankanAlat(a) {
+  var ids = Object.keys(S.pilih);
+  if (a.perluPilih && !ids.length) { toast('Pilih minimal satu baris dulu (centang di kiri).'); return; }
+  function eksekusi(input, tombol) {
+    if (tombol) { tombol.disabled = true; tombol.textContent = 'Memproses…'; }
+    else toast('Memproses…');
+    panggil('alat', S.modul.id, a.id, ids, input || {}).then(function (h) {
+      S.pilih = {}; muat();
+      if (!h.url && !h.tabel) { tutupModal(); toast(h.pesan || 'Selesai.'); return; }
+      var t = '';
+      if (h.tabel && h.tabel.length) {
+        var kol = Object.keys(h.tabel[0]);
+        t = '<div class="tabel-wrap"><table><thead><tr>' + kol.map(function (k) { return '<th>' + esc(k.replace(/_/g, ' ')) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+          h.tabel.map(function (r) { return '<tr>' + kol.map(function (k) { return '<td>' + esc(r[k]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+      }
+      modal('<h2>' + esc(a.label) + '</h2><p style="margin:0">' + esc(h.pesan || 'Selesai.') + '</p>' + t +
+        '<div style="display:flex;gap:8px;justify-content:flex-end">' + (h.url ? '<a class="btn utama" href="' + esc(h.url) + '" target="_blank" rel="noopener">' + esc(h.labelUrl || 'Buka') + '</a>' : '') +
+        '<button type="button" class="btn" onclick="tutupModal()">Tutup</button></div>');
+    }).catch(function (e) {
+      if (tombol) { tombol.disabled = false; tombol.textContent = 'Jalankan'; }
+      var g = $('alatGalat');
+      if (g) { g.textContent = pesanGalat(e); g.hidden = false; } else alert(pesanGalat(e));
+    });
+  }
+  if (a.input && a.input.length) {
+    modal('<h2>' + esc(a.label) + '</h2><form id="formAlat" novalidate style="display:flex;flex-direction:column;gap:14px">' +
+      a.input.map(function (c) { return medan(c, c.bawaan, 'a_'); }).join('') +
+      '<div id="alatGalat" class="galat" hidden></div><div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" onclick="tutupModal()">Batal</button><button class="btn utama" type="submit">Jalankan</button></div></form>');
+    var f = $('formAlat');
+    f.onsubmit = function (ev) { ev.preventDefault(); eksekusi(ambilNilai(f, a.input), f.querySelector('[type=submit]')); };
+  } else if (a.konfirmasi) {
+    if (confirm(a.konfirmasi)) eksekusi({});
+  } else {
+    eksekusi({});
+  }
+}
+
+mulai();
+</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+{
+  "situs": {
+    "nama_yayasan": "[Nama Yayasan]",
+    "tagline": "Yayasan Pendidikan & Sosial",
+    "judul_hero": "[Kalimat misi utama yayasan]",
+    "deskripsi": "[Ringkasan 2–3 kalimat: siapa yayasan ini, bergerak di bidang apa, dan untuk siapa.]",
+    "logo": "",
+    "foto_hero": "",
+    "sejarah": "[Sejarah singkat: kapan dan bagaimana yayasan berdiri, serta siapa yang dilayani.]",
+    "visi": "[Rumusan visi yayasan.]",
+    "misi": "[Misi pertama]\n[Misi kedua]\n[Misi ketiga]",
+    "akta": "[Nomor & tanggal akta]",
+    "sk_kemenkumham": "[Nomor SK]",
+    "alamat": "[Alamat sekretariat]",
+    "telepon_wa": "",
+    "email": "",
+    "maps_embed": "",
+    "qris": "",
+    "ajakan_donasi": "[Ajakan berdonasi dan ke mana dana disalurkan.]"
+  },
+  "tautan": [
+    { "urutan": 1, "label": "Instagram", "url": "https://instagram.com/", "ikon": "instagram", "keterangan": "[@akun]" },
+    { "urutan": 2, "label": "YouTube", "url": "https://youtube.com/", "ikon": "youtube", "keterangan": "[nama kanal]" },
+    { "urutan": 3, "label": "WhatsApp", "url": "https://wa.me/", "ikon": "whatsapp", "keterangan": "Hubungi kami" },
+    { "urutan": 4, "label": "[Formulir pendaftaran]", "url": "https://example.com/", "ikon": "tautan", "keterangan": "" }
+  ],
+  "kategori": [
+    { "slug": "pengumuman", "nama": "Pengumuman", "warna": "karat" },
+    { "slug": "pendidikan", "nama": "Pendidikan", "warna": "biru" },
+    { "slug": "sosial", "nama": "Sosial", "warna": "emas" },
+    { "slug": "kegiatan", "nama": "Kegiatan", "warna": "karat" },
+    { "slug": "opini", "nama": "Opini", "warna": "netral" }
+  ],
+  "pengurus": [
+    { "jabatan": "Ketua", "nama": "[Nama ketua]" },
+    { "jabatan": "Sekretaris", "nama": "[Nama sekretaris]" },
+    { "jabatan": "Bendahara", "nama": "[Nama bendahara]" }
+  ],
+  "bidang": [
+    { "judul": "Pendidikan", "deskripsi": "[Program pendidikan yang dijalankan yayasan.]", "ikon": "pendidikan", "tautan": "#/artikel?kategori=pendidikan" },
+    { "judul": "Sosial", "deskripsi": "[Program sosial dan penerima manfaatnya.]", "ikon": "sosial", "tautan": "#/artikel?kategori=sosial" },
+    { "judul": "[Bidang lain]", "deskripsi": "Slot modul tambahan di masa depan.", "ikon": "lainnya" }
+  ],
+  "kontributor": [
+    { "nama": "[Kontributor A]", "slug": "kontributor-a", "foto": "", "website": "https://example.com", "bio": "[Biografi singkat kontributor A. Contoh kontributor yang menyetor link folder Google Drive.]", "status": "Tayang" },
+    { "nama": "[Lembaga Mitra B]", "slug": "lembaga-mitra-b", "foto": "", "website": "https://example.org", "bio": "[Biografi lembaga mitra B. Contoh kontributor yang artikelnya diambil dari feed RSS websitenya.]", "status": "Tayang" }
+  ],
+  "artikel": [
+    {
+      "id": "d1", "judul": "Panduan: menghubungkan website ke Google Apps Script", "slug": "panduan-menghubungkan-website",
+      "kategori": "pengumuman", "penulis": "Admin", "tanggal": "2026-10-07T08:00:00+07:00", "disematkan": true, "sumber": "internal",
+      "ringkasan": "Website ini sedang berjalan dalam mode demo. Ikuti empat langkah ini agar data diambil dari Google Sheet yayasan.",
+      "sampul": "",
+      "konten": "<p class=\"lead\">Website ini sedang berjalan dalam <strong>mode demo</strong>: semua isi berasal dari <code>data/demo.json</code>.</p><h2>Langkah singkat</h2><ol><li>Buat Google Sheet baru, buka <strong>Ekstensi › Apps Script</strong>, lalu salin semua file dari folder <code>gas/</code>.</li><li>Jalankan fungsi <code>setup()</code>. Password admin awal muncul di Log Eksekusi.</li><li>Pilih <strong>Terapkan › Deployment baru › Aplikasi web</strong> (Jalankan sebagai: Saya · Akses: Siapa saja). Salin URL yang berakhiran <code>/exec</code>.</li><li>Tempel URL itu di <code>assets/js/config.js</code> pada <code>API_URL</code>, lalu unggah ke GitHub Pages.</li></ol><blockquote>Panel admin dibuka di URL web app ditambah <code>?admin</code>.</blockquote><p>Detail lengkap ada di file <code>README.md</code>.</p>"
+    },
+    {
+      "id": "d2", "judul": "Cara menulis artikel lewat Google Docs", "slug": "cara-menulis-artikel-google-docs",
+      "kategori": "pengumuman", "penulis": "Admin", "tanggal": "2026-10-06T09:00:00+07:00", "sumber": "internal",
+      "ringkasan": "Artikel ditulis di Google Doc yang dibuat dari panel admin, lalu tayang setelah statusnya diubah menjadi Tayang.",
+      "sampul": "",
+      "konten": "<p>Di panel admin, buka <strong>Artikel › Buat Google Doc</strong>. Sistem membuat Doc baru di folder khusus dan mencatatnya dengan status <em>Draf</em>, sehingga Doc lain milik yayasan tidak ikut terbit.</p><h2>Format yang dikenali</h2><ul><li>Heading 1–3 menjadi subjudul.</li><li>Tebal, miring, tautan, daftar berpoin dan bernomor.</li><li>Paragraf berindentasi satu tab menjadi kutipan.</li><li>Gambar pertama otomatis menjadi sampul.</li><li>Tabel dan video YouTube (dari feed).</li></ul><h3>Menayangkan</h3><p>Ubah status menjadi <strong>Tayang</strong>. Isi tanggal di masa depan untuk menjadwalkan. Centang <strong>Disematkan</strong> agar artikel selalu di atas daftar.</p>"
+    },
+    {
+      "id": "d3", "judul": "[Judul artikel pendidikan]", "slug": "contoh-artikel-pendidikan", "kategori": "pendidikan", "penulis": "[Nama penulis]",
+      "tanggal": "2026-10-04T10:00:00+07:00", "sumber": "internal", "ringkasan": "[Cuplikan 1–2 kalimat pembuka artikel.]", "sampul": "",
+      "konten": "<p>[Isi artikel dari Google Docs akan tampil di sini.]</p><h2>[Subjudul]</h2><p>[Paragraf isi.]</p><blockquote>[Kutipan yang diberi indentasi di Docs.]</blockquote><p>[Paragraf penutup.]</p>"
+    },
+    {
+      "id": "d4", "judul": "[Judul artikel sosial]", "slug": "contoh-artikel-sosial", "kategori": "sosial", "penulis": "[Nama penulis]",
+      "tanggal": "2026-10-02T10:00:00+07:00", "sumber": "internal", "ringkasan": "[Cuplikan 1–2 kalimat pembuka artikel.]", "sampul": "",
+      "konten": "<p>[Isi artikel dari Google Docs akan tampil di sini.]</p>"
+    },
+    {
+      "id": "d5", "judul": "[Judul tulisan kontributor A]", "slug": "contoh-tulisan-kontributor-a", "kategori": "pendidikan",
+      "penulis": "[Kontributor A]", "kontributor": "kontributor-a", "tanggal": "2026-10-01T10:00:00+07:00", "sumber": "folder", "url_asli": "",
+      "ringkasan": "[Contoh artikel hasil mirror dari folder Google Drive kontributor.]", "sampul": "",
+      "konten": "<p>[Isi Google Doc milik kontributor. Setiap Doc di folder yang disetor menjadi satu artikel dan tersinkron tiap jam.]</p>"
+    },
+    {
+      "id": "d6", "judul": "[Judul tulisan lembaga mitra B]", "slug": "contoh-tulisan-mitra-b", "kategori": "kegiatan",
+      "penulis": "[Lembaga Mitra B]", "kontributor": "lembaga-mitra-b", "tanggal": "2026-09-28T10:00:00+07:00", "sumber": "feed", "url_asli": "https://example.org/",
+      "ringkasan": "[Contoh artikel hasil mirror dari feed RSS website mitra.]", "sampul": "",
+      "konten": "<p>[Isi artikel dari feed RSS/Atom/JSON website mitra. Tautan ke situs asli selalu dicantumkan.]</p>"
+    },
+    {
+      "id": "d7", "judul": "[Judul artikel kegiatan]", "slug": "contoh-artikel-kegiatan", "kategori": "kegiatan", "penulis": "[Nama penulis]",
+      "tanggal": "2026-09-25T10:00:00+07:00", "sumber": "internal", "ringkasan": "[Cuplikan 1–2 kalimat pembuka artikel.]", "sampul": "",
+      "konten": "<p>[Isi artikel dari Google Docs akan tampil di sini.]</p>"
+    }
+  ],
+  "kajian": [
+    { "id": "k1", "tema": "[Tema kajian]", "pemateri": "[Pemateri]", "jenis": "Sekali", "offset_hari": 1, "jam": "19.30", "tempat": "[Masjid contoh A]", "kecamatan": "[Kecamatan A]", "kota": "[Kota]", "lat": -6.1754, "lng": 106.8272 },
+    { "id": "k2", "tema": "[Tema kajian rutin]", "pemateri": "[Pemateri]", "jenis": "Rutin", "hari_rutin": "Ahad", "jam": "06.00", "jam_selesai": "07.30", "tempat": "[Masjid contoh B]", "kecamatan": "[Kecamatan B]", "kota": "[Kota]", "lat": -6.1952, "lng": 106.8230 },
+    { "id": "k3", "tema": "[Tema kajian]", "pemateri": "[Pemateri]", "jenis": "Sekali", "offset_hari": 4, "jam": "16.00", "tempat": "[Masjid contoh C]", "kecamatan": "[Kecamatan C]", "kota": "[Kota]", "lat": -6.2250, "lng": 106.8090 },
+    { "id": "k4", "tema": "[Tema kajian]", "pemateri": "[Pemateri]", "jenis": "Sekali", "offset_hari": 10, "jam": "20.00", "tempat": "[Masjid contoh D]", "kecamatan": "[Kecamatan D]", "kota": "[Kota]", "lat": -6.2100, "lng": 106.8460 }
+  ],
+  "program": [
+    { "id": "p1", "nama": "[Nama program donasi]", "deskripsi": "[Deskripsi singkat kebutuhan program.]", "poster": "", "target": 50000000, "terkumpul": 20000000, "persen": 40, "selesai": "2026-12-31" }
+  ],
+  "rekening": [
+    { "id": "r1", "bank": "[Nama bank]", "nomor": "[No. rekening]", "atas_nama": "[Nama pemilik rekening]", "peruntukan": "Umum", "kontak": { "nama": "[Nama petugas 1]" } },
+    { "id": "r2", "bank": "[Nama bank]", "nomor": "[No. rekening]", "atas_nama": "[Nama pemilik rekening]", "peruntukan": "Pendidikan", "kontak": { "nama": "[Nama petugas 2]" } },
+    { "id": "r3", "bank": "[Nama bank]", "nomor": "[No. rekening]", "atas_nama": "[Nama pemilik rekening]", "peruntukan": "Sosial", "kontak": { "nama": "[Nama petugas 1]" } }
+  ],
+  "kontak": [
+    { "nama": "[Nama petugas 1]", "wa": "", "keterangan": "Rekening umum & sosial" },
+    { "nama": "[Nama petugas 2]", "wa": "", "keterangan": "Rekening program pendidikan" }
+  ],
+  "sematan": {
+    "jenis": "Open Donasi", "judul": "[Judul program donasi]", "tautan": "#/donasi", "teks_tombol": "Donasi Sekarang",
+    "warna": "karat", "target": 50000000, "terkumpul": 20000000, "persen": 40
+  }
+}
