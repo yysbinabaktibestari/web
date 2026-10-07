@@ -45,6 +45,10 @@ var CONFIG = {
   MODUL_NONAKTIF: [],
 
   // Batas waktu proses latar agar tidak melewati batas 6 menit Apps Script
+  // ---- Keuangan: kode akun (sheet Kategori kas) untuk donasi yang dikonfirmasi lewat website ----
+  KAS_AKUN_DONASI: 'DON',
+  KAS_AKUN_DONASI_PROGRAM: 'DON-PRG',
+
   BATAS_WAKTU_MS: 4.5 * 60 * 1000,
 
   // Ukuran maksimum bukti transfer (byte)

@@ -41,7 +41,7 @@ MODUL.donasi = {
         { k: 'deskripsi', l: 'Deskripsi', t: 'textarea', daftar: false },
         { k: 'poster', l: 'Poster (URL)', t: 'image', daftar: false },
         { k: 'target', l: 'Target (Rp)', t: 'number' },
-        { k: 'terkumpul', l: 'Terkumpul (Rp)', t: 'number', bantuan: 'Kosongkan = dihitung otomatis dari konfirmasi berstatus Diterima' },
+        { k: 'terkumpul', l: 'Terkumpul (Rp)', t: 'number', bantuan: 'Kosongkan = dihitung otomatis dari buku kas (uang Masuk untuk program ini)' },
         { k: 'mulai', l: 'Mulai', t: 'date' },
         { k: 'selesai', l: 'Selesai', t: 'date' },
         { k: 'aktif', l: 'Aktif', t: 'bool', bawaan: true }
@@ -137,20 +137,40 @@ MODUL.donasi = {
 
   bootstrap: function () { return { sematan: sematanAktif_() }; },
 
+  /** Status konfirmasi diubah dari panel → buku kas ikut menyesuaikan. */
+  setelahSimpan: function (nama) {
+    if (nama === 'Konfirmasi' && typeof sinkronDonasiKeKas_ === 'function') sinkronDonasiKeKas_();
+  },
+
   alat: [
     {
       id: 'terima', sheet: 'Konfirmasi', label: 'Tandai Diterima', perluPilih: true,
-      run: function (ids) { return { pesan: ubahKolom_('Konfirmasi', ids, 'status', 'Diterima') + ' konfirmasi diterima.' }; }
+      run: function (ids) {
+        var n = ubahKolom_('Konfirmasi', ids, 'status', 'Diterima');
+        var k = typeof sinkronDonasiKeKas_ === 'function' ? ' ' + sinkronDonasiKeKas_().pesan : '';
+        return { pesan: n + ' konfirmasi diterima.' + k };
+      }
     },
     {
       id: 'tolak', sheet: 'Konfirmasi', label: 'Tandai Ditolak', perluPilih: true,
-      run: function (ids) { return { pesan: ubahKolom_('Konfirmasi', ids, 'status', 'Ditolak') + ' konfirmasi ditolak.' }; }
+      run: function (ids) {
+        var n = ubahKolom_('Konfirmasi', ids, 'status', 'Ditolak');
+        var k = typeof sinkronDonasiKeKas_ === 'function' ? ' ' + sinkronDonasiKeKas_().pesan : '';
+        return { pesan: n + ' konfirmasi ditolak.' + k };
+      }
     }
   ]
 };
 
 function terkumpulOtomatis_() {
   var t = {};
+  // Dengan modul Keuangan: dari buku kas (donasi website + donasi tunai/transfer yang dicatat bendahara + sistem lain)
+  if (MODUL.keuangan && CONFIG.MODUL_NONAKTIF.indexOf('keuangan') < 0) {
+    bacaTabel_('Kas').forEach(function (r) {
+      if (r.status === 'Final' && r.jenis === 'Masuk' && r.program) t[r.program] = (t[r.program] || 0) + (Number(r.jumlah) || 0);
+    });
+    return t;
+  }
   bacaTabel_('Konfirmasi').forEach(function (k) {
     if (k.status === 'Diterima' && k.program) t[k.program] = (t[k.program] || 0) + (Number(k.nominal) || 0);
   });

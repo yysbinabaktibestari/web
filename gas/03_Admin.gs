@@ -280,11 +280,16 @@ var ADMIN_API = {
       var key = tb.set(obj);
       tb.simpan();
       naikkanVersiCache();
-      catatLog_(lama ? 'ubah' : 'tambah', nama, key, obj.judul || obj.nama || obj.tema || obj.label || '');
-      return buangRahasia_(def, [tb.ambil(key)])[0];
+      catatLog_(lama ? 'ubah' : 'tambah', nama, key, obj.judul || obj.nama || obj.tema || obj.label || obj.keterangan || '');
+      var baris = tb.ambil(key);
     } finally {
       lock.releaseLock();
     }
+    // Hook setelah tersimpan (di luar kunci), mis. konfirmasi donasi → buku kas
+    if (m && m.setelahSimpan) {
+      try { m.setelahSimpan(nama, baris, lama); } catch (e) { console.error('setelahSimpan ' + nama + ': ' + pesanError_(e)); }
+    }
+    return buangRahasia_(def, [baris])[0];
   },
 
   hapus: function (nama, kunciList) {

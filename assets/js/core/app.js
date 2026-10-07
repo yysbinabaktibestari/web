@@ -14,7 +14,7 @@
 var App = (function () {
   'use strict';
 
-  var modul = {}, rute = [], data = {}, token = 0, galatAwal = '';
+  var modul = {}, rute = [], data = {}, token = 0, galatAwal = '', langkah = 0, saatPindahCb = [];
   var V = '?v=' + encodeURIComponent(KONFIG.VERSI || '1');
   function $(id) { return document.getElementById(id); }
 
@@ -68,7 +68,7 @@ var App = (function () {
       l.rel = 'alternate'; l.type = 'application/rss+xml'; l.title = nama || 'RSS'; l.href = data.feed;
       document.head.appendChild(l);
     }
-    $('logo').innerHTML = '<span class="logo-tanda">' + (s.logo ? '<img src="' + U.esc(U.urlGambar(s.logo)) + '" alt="">' : '<span style="color:#fff">' + U.ikon('buku', 22) + '</span>') + '</span>' +
+    $('logo').innerHTML = '<span class="logo-tanda' + (s.logo ? ' ada-gambar' : '') + '">' + (s.logo ? '<img src="' + U.esc(U.urlGambar(s.logo)) + '" alt="Logo ' + U.esc(nama) + '">' : '<span style="color:#fff">' + U.ikon('buku', 22) + '</span>') + '</span>' +
       '<span class="logo-nama">' + U.esc(nama) + '</span>';
 
     var navs = Object.keys(modul).map(function (id) { return modul[id]; }).filter(function (m) { return m.nav; });
@@ -146,6 +146,10 @@ var App = (function () {
       if (t) t.focus();
       return;
     }
+    // bersihkan sisa halaman sebelumnya (mis. tema mode baca, pendengar scroll)
+    var cb = saatPindahCb; saatPindahCb = [];
+    cb.forEach(function (f) { try { f(); } catch (e) { /* abaikan */ } });
+    langkah++;
     var isi = h.replace(/^#\/?/, '').split('?');
     var path = isi[0].split('/').filter(Boolean);
     var query = {};
@@ -209,6 +213,10 @@ var App = (function () {
     modul: modulBaru, mulai: mulai, judul: judul, muat: muat, galat: galat, ulang: ulang,
     bagianBeranda: bagianBeranda,
     punya: function (id) { return !!modul[id]; },
+    /** Daftarkan fungsi yang dijalankan sekali saat pengunjung pindah halaman. */
+    saatPindah: function (f) { saatPindahCb.push(f); },
+    /** true bila pengunjung datang dari halaman lain di website ini (tombol Kembali aman). */
+    bisaKembali: function () { return langkah > 1; },
     data: function () { return data; },
     bersama: {} // fungsi tampilan yang dipakai lintas modul, mis. App.bersama.kartuArtikel
   };

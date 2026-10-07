@@ -47,7 +47,7 @@
     var baris = pilihan.map(function (k) {
       var on = (q.kontributor || '') === k.slug;
       var ikon = k.slug === '' ? '' : k.yayasan
-        ? '<span class="avatar kecil" style="background:var(--biru);color:#fff">' + (k.logo ? '<img src="' + esc(U.urlGambar(k.logo)) + '" alt="">' : U.ikon('buku', 14)) + '</span>'
+        ? '<span class="avatar kecil' + (k.logo ? ' avatar-logo' : '') + '" style="' + (k.logo ? '' : 'background:var(--biru);color:#fff') + '">' + (k.logo ? '<img src="' + esc(U.urlGambar(k.logo)) + '" alt="">' : U.ikon('buku', 14)) + '</span>'
         : U.avatar(k.nama, k.foto, 'kecil');
       return '<a class="pil pil-penulis' + (on ? ' aktif' : '') + '"' + (on ? ' aria-current="page"' : '') + ' href="' +
         U.hash('artikel', { kontributor: k.slug, kategori: q.kategori }) + '">' + ikon + '<span>' + esc(k.nama) + '</span>' +
@@ -138,7 +138,162 @@
       el.querySelector('#salin-tautan').onclick = function () {
         U.salin(location.href).then(function () { U.toast('Tautan disalin.'); });
       };
+      modeBaca(el, a);
     });
+  }
+
+  /* ================================================================
+   * MODE BACA: progres baca, bilah bawah (Kembali · Tampilan · Ke atas · Bagikan),
+   * pilihan huruf serif/sans, ukuran huruf, tema terang/krem/gelap, dan
+   * "lanjutkan membaca" dari posisi terakhir. Pilihan disimpan di perangkat pembaca.
+   * ============================================================== */
+  var UKURAN = [16, 17, 18, 19, 21, 23, 25];
+  var TEMA = [{ id: 'terang', nama: 'Terang' }, { id: 'krem', nama: 'Krem' }, { id: 'gelap', nama: 'Gelap' }];
+
+  function prefBaca() {
+    var p = {};
+    try { p = JSON.parse(U.bacaLokal('pref_baca') || '{}') || {}; } catch (e) { p = {}; }
+    return { huruf: p.huruf === 'sans' ? 'sans' : 'serif', ukuran: UKURAN.indexOf(p.ukuran) >= 0 ? p.ukuran : null,
+      tema: TEMA.some(function (t) { return t.id === p.tema; }) ? p.tema : 'terang' };
+  }
+
+  function terapkanPref(p) {
+    var r = document.documentElement;
+    if (p.tema === 'terang') delete r.dataset.tema; else r.dataset.tema = p.tema;
+    r.style.setProperty('--f-isi', p.huruf === 'sans' ? 'var(--f-teks)' : 'var(--f-baca)');
+    if (p.ukuran) r.style.setProperty('--ukuran-baca', p.ukuran + 'px'); else r.style.removeProperty('--ukuran-baca');
+    var meta = document.querySelector('meta[name=theme-color]');
+    if (meta) meta.setAttribute('content', p.tema === 'gelap' ? '#12161C' : p.tema === 'krem' ? '#F4ECD8' : '#18548C');
+  }
+
+  function modeBaca(el, a) {
+    var pref = prefBaca();
+    terapkanPref(pref);
+    var kunci = 'baca:' + a.slug;
+
+    var bilah = document.createElement('div');
+    bilah.innerHTML =
+      '<div class="progres-baca" aria-hidden="true"><span></span></div>' +
+      '<div class="lanjut-baca" hidden role="status"><span></span><button type="button" class="lanjut-ya">Lanjutkan</button>' +
+        '<button type="button" class="lanjut-tutup" aria-label="Tutup">' + U.ikon('tutup', 16) + '</button></div>' +
+      '<nav class="bilah-baca" aria-label="Alat baca">' +
+        '<button type="button" data-aksi="kembali">' + U.ikon('kembali', 22) + '<span>Kembali</span></button>' +
+        '<button type="button" data-aksi="tampilan" aria-haspopup="dialog" aria-expanded="false">' + U.ikon('huruf', 22) + '<span>Tampilan</span></button>' +
+        '<button type="button" data-aksi="atas">' + U.ikon('atas', 22) + '<span>Ke atas</span></button>' +
+        '<button type="button" data-aksi="bagikan" class="utama">' + U.ikon('bagikan', 22) + '<span>Bagikan</span></button>' +
+      '</nav>' +
+      '<div class="panel-tampilan" role="dialog" aria-modal="false" aria-label="Pengaturan tampilan" hidden>' +
+        '<div class="panel-kepala"><strong>Tampilan</strong><button type="button" data-aksi="tutup-panel" aria-label="Tutup">' + U.ikon('tutup', 18) + '</button></div>' +
+        '<div class="panel-baris"><span>Huruf</span><div class="segmen" role="group" aria-label="Jenis huruf">' +
+          '<button type="button" data-huruf="serif" class="huruf-serif">Serif</button><button type="button" data-huruf="sans" class="huruf-sans">Sans</button></div></div>' +
+        '<div class="panel-baris"><span>Ukuran</span><div class="segmen ukuran" role="group" aria-label="Ukuran huruf">' +
+          '<button type="button" data-ukuran="-1" aria-label="Perkecil huruf">A−</button><output></output><button type="button" data-ukuran="1" aria-label="Perbesar huruf">A+</button></div></div>' +
+        '<div class="panel-baris"><span>Tema</span><div class="segmen" role="group" aria-label="Tema warna">' +
+          TEMA.map(function (t) { return '<button type="button" data-tema="' + t.id + '"><i class="contoh-tema t-' + t.id + '"></i>' + t.nama + '</button>'; }).join('') + '</div></div>' +
+      '</div>';
+    el.appendChild(bilah);
+    el.classList.add('ada-bilah-baca');
+    var isi = el.querySelector('.isi-artikel');
+    var garis = bilah.querySelector('.progres-baca span'), panel = bilah.querySelector('.panel-tampilan');
+    var tombolTampilan = bilah.querySelector('[data-aksi=tampilan]'), lanjut = bilah.querySelector('.lanjut-baca');
+
+    function ukuranSekarang() {
+      if (pref.ukuran) return pref.ukuran;
+      return Math.round(parseFloat(getComputedStyle(isi).fontSize)) || 19;
+    }
+    function segarkanPanel() {
+      panel.querySelectorAll('[data-huruf]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.huruf === pref.huruf)); });
+      panel.querySelectorAll('[data-tema]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.tema === pref.tema)); });
+      var u = ukuranSekarang();
+      panel.querySelector('output').textContent = u + ' px';
+      panel.querySelector('[data-ukuran="-1"]').disabled = u <= UKURAN[0];
+      panel.querySelector('[data-ukuran="1"]').disabled = u >= UKURAN[UKURAN.length - 1];
+    }
+    function simpan() { U.simpanLokal('pref_baca', JSON.stringify(pref)); terapkanPref(pref); segarkanPanel(); hitung(); }
+    function bukaPanel(buka) {
+      panel.hidden = !buka;
+      tombolTampilan.setAttribute('aria-expanded', String(buka));
+      if (buka) { segarkanPanel(); panel.querySelector('button[aria-pressed=true]').focus(); }
+    }
+
+    // posisi baca: 0 = awal isi artikel, 1 = akhir
+    function batas() {
+      var r = isi.getBoundingClientRect(), awal = r.top + window.scrollY - 80;
+      return { awal: awal, akhir: Math.max(awal + 1, r.bottom + window.scrollY - window.innerHeight * 0.75) };
+    }
+    var tSimpan = 0;
+    function hitung() {
+      if (!document.body.contains(bilah)) return lepas();
+      var b = batas(), p = Math.min(1, Math.max(0, (window.scrollY - b.awal) / (b.akhir - b.awal)));
+      garis.style.transform = 'scaleX(' + p + ')';
+      if (p > 0.03 && !lanjut.hidden && window.scrollY > 300) lanjut.hidden = true;
+      var kini = Date.now();
+      if (kini - tSimpan > 1500) {
+        tSimpan = kini;
+        if (p >= 0.97) U.simpanLokal(kunci, null);
+        else if (p > 0.03) U.simpanLokal(kunci, JSON.stringify({ p: Math.round(p * 1000) / 1000, t: kini }));
+      }
+    }
+    var antre = false;
+    function gulir() { if (!antre) { antre = true; requestAnimationFrame(function () { antre = false; hitung(); }); } }
+    function lepas() {
+      window.removeEventListener('scroll', gulir);
+      window.removeEventListener('resize', gulir);
+      document.removeEventListener('keydown', esc);
+    }
+    function esc(ev) { if (ev.key === 'Escape' && !panel.hidden) { bukaPanel(false); tombolTampilan.focus(); } }
+    window.addEventListener('scroll', gulir, { passive: true });
+    window.addEventListener('resize', gulir);
+    document.addEventListener('keydown', esc);
+    App.saatPindah(function () {
+      lepas();
+      var r = document.documentElement;
+      delete r.dataset.tema;
+      r.style.removeProperty('--ukuran-baca'); r.style.removeProperty('--f-isi');
+      var meta = document.querySelector('meta[name=theme-color]');
+      if (meta) meta.setAttribute('content', '#18548C');
+    });
+
+    bilah.addEventListener('click', function (ev) {
+      var t = ev.target.closest('button');
+      if (!t) return;
+      var aksi = t.dataset.aksi;
+      if (aksi === 'kembali') { if (App.bisaKembali()) history.back(); else location.hash = '#/artikel'; }
+      else if (aksi === 'tampilan') bukaPanel(panel.hidden);
+      else if (aksi === 'tutup-panel') { bukaPanel(false); tombolTampilan.focus(); }
+      else if (aksi === 'atas') { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      else if (aksi === 'bagikan') {
+        if (navigator.share) navigator.share({ title: a.judul, url: location.href }).catch(function () {});
+        else U.salin(location.href).then(function () { U.toast('Tautan artikel disalin.'); });
+      }
+      else if (t.dataset.huruf) { pref.huruf = t.dataset.huruf; simpan(); }
+      else if (t.dataset.tema) { pref.tema = t.dataset.tema; simpan(); }
+      else if (t.dataset.ukuran) {
+        var u = ukuranSekarang(), arah = Number(t.dataset.ukuran);
+        var berikut = arah > 0 ? UKURAN.filter(function (x) { return x > u; })[0] : UKURAN.filter(function (x) { return x < u; }).pop();
+        if (berikut) { pref.ukuran = berikut; simpan(); }
+      }
+      else if (t.classList.contains('lanjut-ya')) {
+        var s = JSON.parse(U.bacaLokal(kunci) || '{}'), b = batas();
+        lanjut.hidden = true;
+        window.scrollTo({ top: b.awal + (s.p || 0) * (b.akhir - b.awal), behavior: 'smooth' });
+      }
+      else if (t.classList.contains('lanjut-tutup')) { lanjut.hidden = true; U.simpanLokal(kunci, null); }
+    });
+    document.addEventListener('click', function tutupLuar(ev) {
+      if (!document.body.contains(bilah)) return document.removeEventListener('click', tutupLuar);
+      if (!panel.hidden && !panel.contains(ev.target) && !tombolTampilan.contains(ev.target)) bukaPanel(false);
+    });
+
+    // tawarkan melanjutkan dari posisi terakhir
+    var simpanan = null;
+    try { simpanan = JSON.parse(U.bacaLokal(kunci) || 'null'); } catch (e) { simpanan = null; }
+    if (simpanan && simpanan.p > 0.05 && simpanan.p < 0.95) {
+      lanjut.querySelector('span').textContent = 'Terakhir dibaca ' + Math.round(simpanan.p * 100) + '%';
+      lanjut.hidden = false;
+      setTimeout(function () { lanjut.hidden = true; }, 12000);
+    }
+    setTimeout(hitung, 50);
   }
 
   App.modul({

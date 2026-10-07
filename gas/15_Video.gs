@@ -408,7 +408,9 @@ function sinkronVideo_(ids) {
   } finally {
     lock.releaseLock();
   }
-  return { ringkas: detail.length ? 'Sinkron selesai untuk ' + detail.length + ' sumber.' : 'Belum ada channel/playlist aktif.', detail: detail };
+  var ringkas = detail.length ? 'Sinkron selesai untuk ' + detail.length + ' sumber.' : 'Belum ada channel/playlist aktif.';
+  if (ctx && ctx.apiGagal) ringkas += ' Video tetap masuk lewat RSS (±15 terbaru). ' + jelaskanGagalApi_(ctx.apiGagal);
+  return { ringkas: ringkas, detail: detail };
 }
 
 /** Satu baris SumberVideo. Mengembalikan kolom yang perlu diperbarui + ringkasan. */
@@ -468,7 +470,21 @@ function sinkronSumberVideo_(s, ctx) {
 }
 
 function catatanTanpaApi_(ctx, teks) {
-  return 'mode RSS (' + teks + ')' + (ctx.apiGagal ? ' — YouTube Data API gagal: ' + potong_(ctx.apiGagal, 160) : '');
+  return 'mode RSS (' + teks + ')' + (ctx.apiGagal ? ' — ' + jelaskanGagalApi_(ctx.apiGagal) : '');
+}
+
+/** Galat YouTube Data API → penjelasan + langkah perbaikan yang bisa dilakukan admin. */
+function jelaskanGagalApi_(m) {
+  m = String(m || '');
+  if (/youtube\.readonly|do not have permission|insufficient[^.]*(scope|permission)|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(m)) {
+    return 'Izin YouTube belum aktif untuk web app ini. Perbaiki sekali: (1) di editor Apps Script jalankan perbaruiSistem lalu klik Izinkan; ' +
+      '(2) Terapkan › Kelola deployment › ✎ › Versi: Versi baru › Terapkan. Sinkron otomatis tiap jam sudah memakai izin baru setelah langkah 1.';
+  }
+  if (/has not been used|is disabled|accessNotConfigured|SERVICE_DISABLED/i.test(m)) {
+    return 'YouTube Data API belum aktif. Di editor Apps Script: Layanan (+) › YouTube Data API v3 › Tambahkan, lalu jalankan perbaruiSistem.';
+  }
+  if (/quota/i.test(m)) return 'Kuota harian YouTube Data API habis; otomatis dilanjutkan besok.';
+  return 'YouTube Data API gagal: ' + potong_(m, 160);
 }
 
 /** ID, nama, foto & playlist unggahan channel. */

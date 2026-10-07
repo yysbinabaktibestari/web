@@ -59,6 +59,9 @@ function doGet(e) {
     var data = detik
       ? dariCache_('get:' + aksi + ':' + kunciParam_(p), detik, function () { return run(p); })
       : run(p);
+    if (data && typeof data.__csv === 'string') {
+      return ContentService.createTextOutput(data.__csv).setMimeType(ContentService.MimeType.CSV);
+    }
     return keluaranJson_({ ok: true, data: data }, p.callback);
   } catch (err) {
     return keluaranJson_({ ok: false, error: pesanError_(err) }, p.callback);

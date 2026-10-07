@@ -133,6 +133,11 @@ function pastikanStruktur_() {
 function migrasi_() {
   if (!prop_('MIGRASI_CONTOH_1')) { bersihkanContoh_(); prop_('MIGRASI_CONTOH_1', '1'); }
   if (!prop_('MIGRASI_PLAYLIST_1')) { tambahAksesPeran_('SumberVideo', 'PlaylistVideo'); prop_('MIGRASI_PLAYLIST_1', '1'); }
+  if (!prop_('MIGRASI_KAS_1')) {
+    tambahAksesPeran_('Konfirmasi', 'Kas'); tambahAksesPeran_('Konfirmasi', 'KategoriKas');
+    try { sinkronDonasiKeKas_(); } catch (e) { console.error('migrasi kas: ' + pesanError_(e)); }
+    prop_('MIGRASI_KAS_1', '1');
+  }
 }
 
 /** Peran yang sudah boleh membuka sheet `ada` otomatis boleh membuka sheet baru `baru`. */

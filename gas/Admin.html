@@ -162,7 +162,9 @@ var IKON_MODUL = {
   kajian: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
   video: '<rect x="2.5" y="5" width="19" height="14" rx="3.5"/><path d="M10 9.2v5.6l5-2.8z"/>',
   donasi: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/>',
-  akses: '<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/>'
+  akses: '<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/>',
+  keuangan: '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M16 14.5h2"/><path d="M6 6V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/>',
+  integrasi: '<path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0z"/><path d="M12 16v5"/>'
 };
 var KUNCI_GAMBAR = ['logo', 'foto_hero', 'qris'];
 /** Sama dengan urlGambar_ di backend: link berbagi Drive/GitHub/Dropbox/Imgur → URL gambar langsung. */
@@ -515,14 +517,16 @@ function jalankanAlat(a) {
     else toast('Memproses…');
     panggil('alat', S.modul.id, a.id, ids, input || {}).then(function (h) {
       S.pilih = {}; muat();
-      if (!h.url && !h.tabel) { tutupModal(); toast(h.pesan || 'Selesai.'); return; }
+      if (!h.url && !h.tabel && !h.salin) { tutupModal(); toast(h.pesan || 'Selesai.'); return; }
       var t = '';
       if (h.tabel && h.tabel.length) {
         var kol = Object.keys(h.tabel[0]);
         t = '<div class="tabel-wrap"><table><thead><tr>' + kol.map(function (k) { return '<th>' + esc(k.replace(/_/g, ' ')) + '</th>'; }).join('') + '</tr></thead><tbody>' +
           h.tabel.map(function (r) { return '<tr>' + kol.map(function (k) { return '<td>' + esc(r[k]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
       }
-      modal('<h2>' + esc(a.label) + '</h2><p style="margin:0">' + esc(h.pesan || 'Selesai.') + '</p>' + t +
+      if (h.salin) t += '<div style="display:flex;gap:8px"><input id="teksSalin" readonly value="' + esc(h.salin) + '" style="flex:1;min-width:0;min-height:42px;padding:8px 12px;border-radius:10px;border:1px solid var(--garis-input);font-family:monospace;font-size:13px">' +
+        '<button type="button" class="btn utama" onclick="var i=document.getElementById(\'teksSalin\');i.select();(navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.resolve(document.execCommand(\'copy\'))).then(function(){toast(\'Disalin.\')})">Salin</button></div>';
+      modal('<h2>' + esc(a.label) + '</h2><p style="margin:0;white-space:pre-line">' + esc(h.pesan || 'Selesai.') + '</p>' + t +
         '<div style="display:flex;gap:8px;justify-content:flex-end">' + (h.url ? '<a class="btn utama" href="' + esc(h.url) + '" target="_blank" rel="noopener">' + esc(h.labelUrl || 'Buka') + '</a>' : '') +
         '<button type="button" class="btn" onclick="tutupModal()">Tutup</button></div>');
     }).catch(function (e) {

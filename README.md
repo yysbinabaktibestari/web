@@ -37,6 +37,8 @@ Cek koneksi kapan saja di `https://USERNAME.github.io/REPO/cek.html`.
 
 `Pemuat.gs` sendiri hampir tidak pernah berubah. Bila suatu saat berubah, catatan rilis akan menyebutkannya.
 
+**Bila `pasang/appsscript.json` berubah** (izin baru, mis. YouTube): tempel ulang isinya → jalankan `perbaruiSistem` dari editor & klik **Izinkan** → **Terapkan › Kelola deployment › ✎ › Versi baru › Terapkan**. Langkah terakhir perlu karena web app (panel admin & website) memakai izin dari versi yang di-deploy; kode sistem sendiri tetap tidak perlu deploy ulang.
+
 ## 3. Website di GitHub Pages
 
 1. **Settings › Pages › Deploy from a branch** (`main`, folder `/root`). Website aktif di `https://USERNAME.github.io/REPO/`.
@@ -47,7 +49,7 @@ Cek koneksi kapan saja di `https://USERNAME.github.io/REPO/cek.html`.
 - **Ganti password sendiri**: tombol **Ganti password** di bilah atas panel (semua admin).
 - **Tambah personel**: Superadmin › *Pengelolaan Admin › Akun admin* › **+ Tambah admin** (nama, username, peran, password awal). Pemilik akun wajib mengganti password saat pertama masuk.
 - **Cabut akses**: matikan *Aktif* di akun tersebut (sesinya langsung berakhir). **Reset password**: centang akun › *Reset password*.
-- **Peran**: *Peran & hak akses* berisi daftar sheet yang boleh dibuka tiap peran, plus izin hapus & unduh Excel. Bawaan: Superadmin (`*`), Editor, Bendahara, Pengelola Kajian; bisa ditambah sendiri. Sistem selalu menjaga minimal satu Superadmin aktif.
+- **Peran**: *Peran & hak akses* berisi daftar sheet yang boleh dibuka tiap peran, plus izin hapus & unduh Excel. Bawaan: Superadmin (`*`), Editor, Bendahara (donasi + buku kas), Pengelola Kajian; bisa ditambah sendiri. Sistem selalu menjaga minimal satu Superadmin aktif.
 - **Log aktivitas**: setiap masuk, gagal masuk, tambah/ubah/hapus, unduh, dan aksi tombol tercatat permanen.
 - **Lupa password Superadmin**: buka Google Sheet › menu **Yayasan › Reset password admin**. (Alternatif: isi `RESET_SANDI` di `Pemuat.gs`, jalankan `resetPasswordAdmin`, lalu kosongkan lagi.)
 - Menu *Pengelolaan Admin* tampil di zona gelap terpisah di bawah sidebar, hanya untuk Superadmin.
@@ -66,6 +68,8 @@ Cek koneksi kapan saja di `https://USERNAME.github.io/REPO/cek.html`.
 | **Teks situs** | Admin › Pengaturan situs (nama, hero, visi, misi, alamat, QRIS, embed peta, dll.). Bagian yang belum diisi otomatis disembunyikan dari website. |
 | **Logo & gambar** | Tempel link berbagi Google Drive apa adanya (`…/file/d/…/view`) — diubah otomatis jadi link gambar, dan file Drive milik akun yayasan langsung dibagikan *Siapa saja yang memiliki link* saat disimpan dari panel admin. Link GitHub (`…/blob/…`), Dropbox, dan Imgur juga dikenali. Link Google Photos/Instagram/Facebook tidak bisa dipakai. Form admin menampilkan pratinjau; bila gambar gagal dimuat, website menampilkan ikon cadangan (bukan gambar rusak). |
 | **Katalog video** | Lihat bagian 6b. |
+| **Mode baca artikel** | Otomatis di setiap artikel: garis progres tipis di atas layar, bilah bawah (*Kembali · Tampilan · Ke atas · Bagikan*; di laptop berupa bilah melayang), pilihan huruf Serif/Sans, ukuran huruf, tema Terang/Krem/Gelap, dan tawaran *Lanjutkan* dari posisi terakhir. Pilihan tersimpan di perangkat pembaca. |
+| **Buku kas & laporan** | Lihat bagian 6c. |
 
 Mengedit langsung di Google Sheet juga boleh; cache website segar otomatis.
 
@@ -99,7 +103,36 @@ Atur bawaan di `00_Konfigurasi.gs`: `KONTRIBUTOR_STATUS_DEFAULT`, `ARTIKEL_KONTR
 | Playlist channel | Semua playlist + seluruh isinya, diperbarui sehari sekali | Tidak terbaca; tambahkan URL playlist sebagai baris tersendiri (±15 video teratasnya) |
 | Kuota | ±1–2 unit per channel per jam dari jatah gratis 10.000/hari | — |
 
-**Mengaktifkan YouTube Data API (sekali):** `pasang/appsscript.json` versi ini sudah memuatnya. Tempel ulang isinya ke `appsscript.json` di editor Apps Script, lalu di panel kiri **Layanan (+)** pastikan *YouTube Data API v3* tercantum (bila belum: pilih › Tambahkan). Jalankan `perbaruiSistem` sekali dari editor untuk memberi izin baru. Bila API belum aktif, sinkron tetap jalan lewat RSS dan kolom *Hasil* menjelaskan penyebabnya.
+**Mengaktifkan YouTube Data API (sekali):**
+1. Tempel ulang isi `pasang/appsscript.json` ke `appsscript.json` di editor Apps Script; di panel kiri **Layanan (+)** pastikan *YouTube Data API v3* tercantum (bila belum: pilih › Tambahkan).
+2. Jalankan `perbaruiSistem` dari editor → klik **Izinkan** (izin "lihat akun YouTube" = membaca data publik channel).
+3. **Terapkan › Kelola deployment › ✎ › Versi: Versi baru › Terapkan.** Tanpa langkah ini tombol *Sinkron sekarang* di panel memunculkan galat *"You do not have permission … youtube.readonly"* karena panel masih memakai izin versi lama. (Sinkron otomatis tiap jam sudah benar setelah langkah 2.)
+
+Bila API belum aktif, sinkron tetap jalan lewat RSS dan kolom *Hasil* menjelaskan langkah perbaikannya.
+
+## 6c. Keuangan: buku kas & sinkron dengan laporan lain
+
+Satu **Buku kas** (Admin › Keuangan) menjadi sumber semua laporan — website, sistem pembukuan lain, maupun laporan di Google Sheet terpisah — sehingga angkanya selalu sama.
+
+- **Isi buku kas**: input bendahara; **donasi website otomatis** (konfirmasi *Diterima* → entri Masuk, *Ditolak* → dibatalkan); modul tambahan; atau sistem lain lewat API.
+- **Kategori kas / akun**: kode singkat (DON, DON-PRG, PND, PRG, OPS, LAIN) dipakai bersama semua sistem. Jangan ubah kode yang sudah dipakai; tambah yang baru bila perlu.
+- **Program** pada entri = dana terikat/proyek. *Terkumpul* di halaman donasi dihitung dari buku kas (uang Masuk untuk program itu).
+- **Tidak ada hapus**: ubah status ke *Batal* (pembatalan ikut tersinkron). Entri dari donasi website/sistem lain diubah di sumbernya.
+- **Tutup buku**: Buku kas › *Kunci periode* — entri sampai tanggal itu tidak bisa diubah dari mana pun (koreksi dicatat sebagai entri baru di periode berjalan). Membuka kunci hanya Superadmin.
+- **Ringkasan per bulan**: tombol di Buku kas. **Laporan publik** (tanpa nama donatur): set Pengaturan `laporan_keuangan` = `ya`, lalu `?action=laporan_kas&tahun=2026` (atau `bulan=2026-10`, `dari=…&sampai=…`) — siap dipakai halaman laporan/infografis nanti.
+
+**Menghubungkan sistem lain.** Superadmin › *Integrasi & API › Kunci API sinkron* › **+ Buat kunci** (satu kunci per sistem; tampil sekali). Izin: `kas:baca`, `kas:rinci` (termasuk nama pihak & bukti), `kas:tulis`.
+
+| Kebutuhan | Panggilan |
+|---|---|
+| Tarik perubahan (sinkron bertahap) | `GET …/exec?action=kas_ekspor&kunci=KUNCI&kursor=KURSOR_TERAKHIR` → `{items, kursor, lagi}`. Simpan `kursor`; ulangi selama `lagi=true`. Tanpa kursor = dari awal. Entri *Batal* ikut terkirim. |
+| Tabel di Google Sheet lain | `=IMPORTDATA("…/exec?action=kas_ekspor&kunci=KUNCI&format=csv")` (opsional `&dari=2026-01-01&sampai=2026-12-31`) |
+| Daftar kode akun, program, rekening | `GET …/exec?action=kas_akun&kunci=KUNCI` |
+| Kirim / ubah entri dari sistem lain | `POST …/exec` body `{"action":"kas_impor","kunci":"KUNCI","items":[{"ref_sumber":"TRX-1","tanggal":"2026-10-05","jenis":"Masuk","jumlah":750000,"akun":"DON","program":"","keterangan":"…","pihak":"…","status":"Final"}]}` → hasil per baris `baru / ubah / sama / galat`. `ref_sumber` = ID di sistem pengirim: kirim ulang data yang sama tidak menggandakan; `"status":"Batal"` untuk membatalkan. Maks 500 per kiriman. |
+
+Setiap entri membawa `sumber`, `ref_sumber`, `diubah`, dan `versi` (naik setiap perubahan). Sistem lain hanya bisa mengubah entri bersumber dirinya. Perlakukan URL berisi kunci seperti password; cabut kapan saja dengan mematikan *Aktif* atau *Ganti kunci*.
+
+**Modul tambahan** (mis. SPP, wakaf, inventaris) cukup memanggil `postingKas_('nama-modul', idTransaksi, {tanggal, jenis, jumlah, akun, program, keterangan})` dan `batalKas_('nama-modul', idTransaksi)`; laporan & sinkron otomatis ikut.
 
 ## 7. API & feed (untuk mitra yang ingin mirror)
 

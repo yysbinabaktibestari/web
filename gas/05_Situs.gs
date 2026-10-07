@@ -38,7 +38,8 @@ MODUL.situs = {
         { kunci: 'email', nilai: '', keterangan: 'Email yayasan' },
         { kunci: 'maps_embed', nilai: '', keterangan: 'URL embed Google Maps (Bagikan › Sematkan peta › ambil src)' },
         { kunci: 'qris', nilai: '', keterangan: 'Link gambar QRIS donasi. Boleh link Google Drive' },
-        { kunci: 'ajakan_donasi', nilai: '', keterangan: 'Halaman Donasi' }
+        { kunci: 'ajakan_donasi', nilai: '', keterangan: 'Halaman Donasi' },
+        { kunci: 'laporan_keuangan', nilai: 'tidak', keterangan: 'ya = ringkasan buku kas (tanpa nama donatur) boleh diambil publik lewat ?action=laporan_kas' }
       ]
     },
     {

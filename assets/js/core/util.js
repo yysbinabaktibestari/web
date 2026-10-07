@@ -86,7 +86,11 @@ var U = (function () {
     panah: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     jam: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>',
     pengguna: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
-    email: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'
+    email: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+    kembali: '<path d="M15 5l-7 7 7 7"/>',
+    atas: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    huruf: '<path d="M3 18L8.5 5 14 18M5 13.5h7"/><path d="M15.5 12.2c.7-.8 1.6-1.2 2.7-1.2 1.8 0 2.8 1 2.8 2.8V18M21 15.2c-2.6 0-4.8.4-4.8 1.7 0 .8.7 1.3 1.7 1.3 1.6 0 3.1-1.1 3.1-3"/>',
+    bagikan: '<circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.8l7.6-4.1M8.2 13.2l7.6 4.1"/>'
   };
   function ikon(nama, ukuran, kelas) {
     var s = ukuran || 20;
@@ -128,7 +132,8 @@ var U = (function () {
     if (window.console) console.warn('Gambar gagal dimuat (pastikan link publik & berupa gambar): ' + img.src);
     var p = img.parentNode;
     if (!p) return;
-    if (p.classList.contains('logo-tanda')) { p.innerHTML = '<span style="color:#fff">' + ikon('buku', 22) + '</span>'; return; }
+    if (p.classList.contains('logo-tanda')) { p.classList.remove('ada-gambar'); p.innerHTML = '<span style="color:#fff">' + ikon('buku', 22) + '</span>'; return; }
+    if (p.classList.contains('avatar-logo')) { p.classList.remove('avatar-logo'); p.style.background = 'var(--biru)'; p.style.color = '#fff'; p.innerHTML = ikon('buku', 14); return; }
     if (p.classList.contains('avatar')) { p.textContent = p.getAttribute('data-inisial') || ''; return; }
     if (p.hasAttribute('data-gambar')) { p.classList.add('sampul-kosong'); p.innerHTML = ikon('buku', 40); return; }
     img.remove();
