@@ -9,32 +9,33 @@ index.html, assets/        → website (GitHub Pages)
   assets/js/core/          → inti: router, API, util, data demo
   assets/js/modules/       → satu file per modul halaman
 data/demo.json             → data contoh mode demo
-gas/                       → backend Apps Script (salin ke proyek GAS)
+gas/                       → backend Apps Script (ditarik otomatis oleh Pemuat.gs)
+pasang/                    → 2 file yang ditempel sekali di proyek Apps Script
 panduan/                   → template modul baru (backend + website)
 ```
 
 ## 1. Pasang backend (sekali saja, ±10 menit)
 
-Cukup **dua file** yang ditempel manual; sisanya ditarik otomatis dari repo GitHub.
+Di proyek Apps Script hanya ada **dua file**: `appsscript.json` dan `Pemuat.gs` (folder `pasang/`). Seluruh kode sistem ditarik pemuat dari folder `gas/` di GitHub — tidak perlu Apps Script API maupun Google Cloud.
 
-1. Pastikan isi folder ini sudah ada di repo GitHub publik (`yysbinabaktibestari/web`). Repo lain: ubah `GITHUB_REPO` di `gas/00_Konfigurasi.gs` & `PEMBARU_BAWAAN` di `gas/98_Pembaru.gs`.
-2. Buat **Google Sheet** baru (pakai akun Gmail pribadi bila akun lembaga membatasi berbagi publik) › **Ekstensi › Apps Script**.
-3. **Setelan proyek** › centang *Tampilkan file manifes "appsscript.json"*. Ganti isi `appsscript.json` dengan file `gas/appsscript.json`.
-4. Ganti isi `Kode.gs` dengan isi `gas/98_Pembaru.gs`.
-5. Aktifkan **Google Apps Script API** di https://script.google.com/home/usersettings (sekali per akun).
-6. Pilih fungsi **`perbaruiDariGitHub`** › **Jalankan** › izinkan akses. Semua kode ditarik dari GitHub dan deployment web app dibuat; **URL web app** muncul di Log eksekusi.
-7. Muat ulang editor, pilih fungsi **`setup`** › Jalankan. Log menampilkan akun Superadmin pertama (username **`admin`** + password awal).
-8. Tempel URL web app ke `assets/js/config.js` › `API_URL`, unggah ke GitHub. Panel admin: `URL/exec?admin`.
+1. Pastikan isi folder ini sudah ada di repo GitHub **publik** (`yysbinabaktibestari/web`). Repo lain: ubah `PEMUAT.REPO` di `Pemuat.gs`.
+2. Buka **Google Sheet** yayasan › **Ekstensi › Apps Script** (pakai akun Gmail pribadi bila akun lembaga membatasi akses publik).
+3. **Hapus semua file kode lain** di editor (⋮ › Hapus), termasuk `Kode.gs` / file versi lama.
+4. **Setelan proyek** (ikon roda gigi) › centang *Tampilkan file manifes "appsscript.json"*. Ganti isi `appsscript.json` dengan `pasang/appsscript.json`.
+5. Buat file skrip **`Pemuat`**, tempel isi `pasang/Pemuat.gs`, simpan.
+6. Pilih fungsi **`perbaruiSistem`** › **Jalankan** › izinkan akses. Kode ditarik dari GitHub, sheet/folder/trigger disiapkan, dan akun login muncul di *Log eksekusi* (username **`admin`** + password awal, atau password lama bila pernah dipasang).
+7. **Terapkan › Kelola deployment** › ✎ pada deployment *Aplikasi web* › Versi: **Versi baru** · Jalankan sebagai: **Saya** · Yang memiliki akses: **Siapa saja** › Terapkan. (Belum ada deployment? **Terapkan › Deployment baru** › Aplikasi web, pengaturan sama.)
+8. URL web app (berakhiran `/exec`) harus sama dengan `API_URL` di `assets/js/config.js`. Bila berbeda, ubah file itu langsung di GitHub (ikon ✎). Panel admin: `URL/exec?admin`.
 
 Cek koneksi kapan saja di `https://USERNAME.github.io/REPO/cek.html`.
 
 ## 2. Memperbarui (setelah ada versi baru)
 
-1. Unggah file baru ke GitHub (atau biarkan Claude yang push bila GitHub tersambung). Website langsung ikut terbarui.
-2. Backend: Superadmin klik **Perbarui sistem** di panel admin, atau menu Sheet **Yayasan › Perbarui dari GitHub**. URL web app tetap sama, dan sheet/kolom baru dibuat otomatis — tidak perlu salin file atau jalankan `setup()` lagi.
-3. Kode buatan sendiri di proyek Apps Script beri awalan nama `lokal` (mis. `lokal_Catatan.gs`) agar tidak tertimpa.
+1. Unggah isi paket baru ke GitHub (**Add file › Upload files**, seret semua isi folder). Website langsung ikut terbarui.
+2. Backend: Superadmin klik **Perbarui sistem** di panel admin (atau menu Sheet **Yayasan › Perbarui sistem dari GitHub**). Berlaku saat itu juga — **tidak perlu deploy ulang**, salin file, atau `setup()`; sheet/kolom baru dibuat otomatis.
+3. Bila versi baru bermasalah: menu Sheet **Yayasan › Kembalikan versi sebelumnya** (atau jalankan `kembalikanVersiSebelumnya` di editor).
 
-Bila setelah pembaruan muncul pesan izin (scope) baru: buka editor, jalankan `perbaruiDariGitHub` sekali untuk menyetujui.
+`Pemuat.gs` sendiri hampir tidak pernah berubah. Bila suatu saat berubah, catatan rilis akan menyebutkannya.
 
 ## 3. Website di GitHub Pages
 
@@ -48,7 +49,7 @@ Bila setelah pembaruan muncul pesan izin (scope) baru: buka editor, jalankan `pe
 - **Cabut akses**: matikan *Aktif* di akun tersebut (sesinya langsung berakhir). **Reset password**: centang akun › *Reset password*.
 - **Peran**: *Peran & hak akses* berisi daftar sheet yang boleh dibuka tiap peran, plus izin hapus & unduh Excel. Bawaan: Superadmin (`*`), Editor, Bendahara, Pengelola Kajian; bisa ditambah sendiri. Sistem selalu menjaga minimal satu Superadmin aktif.
 - **Log aktivitas**: setiap masuk, gagal masuk, tambah/ubah/hapus, unduh, dan aksi tombol tercatat permanen.
-- **Lupa password Superadmin**: di editor, isi `USERNAME` & `BARU` pada `resetPasswordAdmin()` (99_Setup.gs), jalankan, lalu kosongkan lagi `BARU`.
+- **Lupa password Superadmin**: buka Google Sheet › menu **Yayasan › Reset password admin**. (Alternatif: isi `RESET_SANDI` di `Pemuat.gs`, jalankan `resetPasswordAdmin`, lalu kosongkan lagi.)
 - Menu *Pengelolaan Admin* tampil di zona gelap terpisah di bawah sidebar, hanya untuk Superadmin.
 
 ## 5. Pemakaian harian
@@ -103,14 +104,16 @@ Feed bawaan **hanya berisi artikel asli yayasan**, sehingga dua situs yang salin
 
 Contoh lengkap ada di `panduan/` (modul *Galeri*):
 
-1. **Backend**: salin `panduan/template-modul.gs` ke proyek GAS → jalankan `setup()` → sheet & menu admin terbentuk otomatis → deploy versi baru.
-2. **Website**: salin `panduan/template-modul.js` ke `assets/js/modules/video.js` → tambahkan `'video'` ke `KONFIG.MODUL` → naikkan `VERSI`.
+1. **Backend**: simpan `panduan/template-modul.gs` sebagai `gas/30_Galeri.gs` di GitHub → klik **Perbarui sistem** → sheet & menu admin terbentuk otomatis.
+2. **Website**: simpan `panduan/template-modul.js` sebagai `assets/js/modules/galeri.js` → tambahkan `'galeri'` ke `KONFIG.MODUL` → naikkan `VERSI`.
 
 Modul dapat menambah: sheet + kolom (form admin dibuat otomatis), endpoint GET/POST publik, tombol aksi admin, data beranda/bootstrap, tugas per jam, halaman + menu + bagian beranda. Matikan modul tanpa menghapus file lewat `MODUL_NONAKTIF` (backend) atau `KONFIG.MODUL` (website).
 
 ## 9. Catatan teknis
 
-- Keamanan: hanya fungsi tanpa akhiran `_` yang bisa dipanggil dari browser. Fungsi internal baru di modul tambahan **wajib** diberi akhiran `_` (contoh di `panduan/`). `setup` dan `resetPasswordAdmin` hanya berjalan dari editor oleh pemilik.
+- Keamanan: hanya fungsi tanpa akhiran `_` yang bisa dipanggil dari browser. Fungsi internal baru di modul tambahan **wajib** diberi akhiran `_` (contoh di `panduan/`). `perbaruiSistem`, `setup` dan `resetPasswordAdmin` hanya berjalan dari editor atau menu Sheet oleh pemilik.
+- Cara kerja pemuat: `perbaruiSistem` mengunduh zip repo, menggabungkan `gas/*.gs` + `Admin.html`, mengujinya di ruang terpisah (sintaks & fungsi wajib), lalu menyimpannya terkompresi di Script Properties (versi aktif + satu versi sebelumnya). Setiap permintaan memuat kode itu sekali. File yang tidak dipakai lagi di `gas/` cukup dikosongkan, jangan dihapus — unggahan lewat browser tidak menghapus file lama di GitHub.
+- Tanpa pemuat pun bisa: tempel semua isi `gas/` (+ `pasang/appsscript.json`) ke proyek Apps Script secara manual.
 
 - Apps Script punya kuota harian (pengambilan URL, geocoding, durasi eksekusi; lihat halaman *Quotas for Google Services*). Data publik di-cache 5 menit di server dan di browser, dan hasil geocoding di-cache per area, sehingga pemakaian kuota hemat. Bila kuota geocoding habis, koordinat tetap tercatat tanpa nama kecamatan.
 - Gambar artikel disalin ke folder Drive publik `Gambar Artikel (publik)`; jangan ubah izin bagikannya.

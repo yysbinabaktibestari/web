@@ -450,12 +450,13 @@ function formSandi(wajib) {
 }
 $('gantiSandi').onclick = function () { formSandi(false); };
 $('perbarui').onclick = function () {
-  if (!confirm('Tarik kode terbaru dari GitHub dan perbarui sistem sekarang? Proses ±30 detik.')) return;
+  var si = S.skema && S.skema.sistem;
+  if (!confirm((si ? 'Terpasang: ' + si.label + '\n\n' : '') + 'Tarik kode terbaru dari GitHub dan pasang sekarang? Proses ±10 detik, langsung berlaku.')) return;
   var b = $('perbarui'); b.disabled = true; b.textContent = 'Memperbarui…';
   panggil('perbaruiSistem').then(function (h) {
     b.disabled = false; b.textContent = 'Perbarui sistem';
-    modal('<h2>Sistem diperbarui</h2><p style="margin:0">' + esc(h.pesan) + '</p>' +
-      (h.url ? '<p style="margin:0;font-size:14px;color:var(--redup)">URL web app: ' + esc(h.url) + '</p>' : '') +
+    modal('<h2>' + (h.baru ? 'Sistem diperbarui' : 'Sudah terbaru') + '</h2><p style="margin:0">' + esc(h.pesan) + '</p>' +
+      (h.baru ? '<p style="margin:0;font-size:14px;color:var(--redup)">Bila ada masalah: menu Sheet Yayasan › Kembalikan versi sebelumnya.</p>' : '') +
       '<div style="display:flex;justify-content:flex-end"><button class="btn utama" type="button" onclick="location.reload()">Muat ulang panel</button></div>');
   }).catch(function (e) { b.disabled = false; b.textContent = 'Perbarui sistem'; alert(pesanGalat(e)); });
 };

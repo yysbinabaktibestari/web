@@ -1,10 +1,10 @@
 /**
  * TEMPLATE MODUL BACKEND
  * ------------------------------------------------------------------
- * 1. Salin file ini ke Apps Script sebagai mis. "30_Galeri.gs".
- * 2. Ganti "video" dan definisinya sesuai kebutuhan.
- * 3. Jalankan setup() → sheet & kolom dibuat otomatis, menu muncul di panel admin.
- * 4. Terapkan › Kelola deployment › Edit › Versi baru (URL web app tetap sama).
+ * 1. Simpan file ini di repo GitHub sebagai mis. "gas/30_Galeri.gs".
+ * 2. Ganti "galeri" dan definisinya sesuai kebutuhan.
+ * 3. Panel admin › Perbarui sistem → sheet & kolom dibuat otomatis,
+ *    menu muncul di panel admin. Tidak perlu deploy ulang.
  *
  * Semua bagian opsional kecuali `sheets` (bila modul menyimpan data).
  */

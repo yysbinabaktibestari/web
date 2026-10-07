@@ -1,11 +1,12 @@
 /**
  * SETUP & PEMELIHARAAN
  * ------------------------------------------------------------------
- * 1. Jalankan setup() sekali dari editor (izinkan akses yang diminta).
- *    Akun Superadmin pertama ("admin") + password awal muncul di Log Eksekusi.
- * 2. Jalankan lagi kapan saja setelah menambah modul / kolom baru —
- *    sheet & kolom baru dibuat tanpa menyentuh data lama.
- * 3. Lupa password / terkunci: isi variabel di resetPasswordAdmin() lalu jalankan.
+ * 1. setup() dijalankan otomatis oleh perbaruiSistem (Pemuat.gs). Akun
+ *    Superadmin pertama ("admin") + password awal muncul di Log eksekusi.
+ * 2. Aman dijalankan lagi kapan saja — sheet & kolom baru dibuat tanpa
+ *    menyentuh data lama (biasanya tidak perlu: struktur menyesuaikan otomatis).
+ * 3. Lupa password / terkunci: menu Sheet "Yayasan › Reset password admin",
+ *    atau isi RESET_SANDI di Pemuat.gs lalu jalankan resetPasswordAdmin.
  */
 
 function setup() {
@@ -22,14 +23,15 @@ function setup() {
 
   ['FOLDER_INDUK', 'FOLDER_DOCS', 'FOLDER_GAMBAR', 'FOLDER_CACHE', 'FOLDER_BUKTI'].forEach(folder_);
 
-  pastikanSuperadmin_(true);
+  var akun = pastikanSuperadmin_(true);
   migrasi_();
   prop_('STRUKTUR', sidikStruktur_());
 
   pasangTrigger_();
   naikkanVersiCache();
-  Logger.log('Setup selesai. Terapkan › Deployment baru › Aplikasi web (Jalankan sebagai: Saya, Akses: Siapa saja). ' +
-    'Panel admin = URL web app + "?admin".');
+  var pesan = 'Setup selesai: sheet, folder Drive, trigger & akun admin siap.' + (akun ? '\n' + akun : '');
+  Logger.log(pesan);
+  return pesan;
 }
 
 /**
@@ -38,9 +40,24 @@ function setup() {
  */
 function resetPasswordAdmin() {
   hanyaPemilik_();
-  var USERNAME = 'admin';
-  var BARU = '';
-  if (String(BARU).length < 8) throw new Error('Isi variabel BARU (minimal 8 karakter) terlebih dulu.');
+  var USERNAME = String((typeof RESET_USERNAME !== 'undefined' && RESET_USERNAME) || 'admin').trim();
+  var BARU = String((typeof RESET_SANDI !== 'undefined' && RESET_SANDI) || '');
+  var dariVariabel = !!BARU, ui = null;
+  if (!BARU) {
+    try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }   // dari editor: tidak ada UI
+    if (ui) {
+      var r1 = ui.prompt('Reset password admin', 'Username yang direset (kosongkan = admin):', ui.ButtonSet.OK_CANCEL);
+      if (r1.getSelectedButton() !== ui.Button.OK) return;
+      USERNAME = r1.getResponseText().trim() || 'admin';
+      var r2 = ui.prompt('Reset password admin', 'Password baru untuk "' + USERNAME + '" (minimal 8 karakter):', ui.ButtonSet.OK_CANCEL);
+      if (r2.getSelectedButton() !== ui.Button.OK) return;
+      BARU = r2.getResponseText();
+    }
+  }
+  if (BARU.length < 8) {
+    throw new Error('Password baru minimal 8 karakter. Pakai menu Sheet "Yayasan › Reset password admin", ' +
+      'atau isi RESET_SANDI di Pemuat.gs lalu jalankan resetPasswordAdmin lagi.');
+  }
   var tb = new Tabel_('Admin');
   var u = tb.objek().filter(function (x) { return String(x.username).toLowerCase() === USERNAME.toLowerCase(); })[0];
   var garam = Utilities.getUuid();
@@ -49,7 +66,11 @@ function resetPasswordAdmin() {
   else { data.nama = USERNAME; data.username = USERNAME.toLowerCase(); data.peran = 'Superadmin'; data.dibuat = new Date(); }
   tb.set(data);
   tb.simpan();
-  Logger.log('Password "' + USERNAME + '" direset. Kosongkan lagi variabel BARU di kode.');
+  var pesan = 'Password "' + USERNAME + '" sudah direset dan wajib diganti saat login.' +
+    (dariVariabel ? ' Kosongkan lagi RESET_SANDI di Pemuat.gs.' : '');
+  Logger.log(pesan);
+  if (ui) ui.alert(pesan);
+  return pesan;
 }
 
 /**
@@ -59,24 +80,26 @@ function resetPasswordAdmin() {
  */
 function pastikanSuperadmin_(bolehAcak) {
   var tb = new Tabel_('Admin');
-  if (tb.objek().length) { prop_('ADMIN_HASH', null); return; }
+  if (tb.objek().length) { prop_('ADMIN_HASH', null); return ''; }
   var lama = prop_('ADMIN_HASH');
-  var akun = { nama: 'Superadmin', username: 'admin', peran: 'Superadmin', aktif: true, dibuat: new Date() };
+  var akun = { nama: 'Superadmin', username: 'admin', peran: 'Superadmin', aktif: true, dibuat: new Date() }, pesan;
   if (lama) {
     akun.hash = 'legacy:' + lama;
-    Logger.log('Akun "admin" dibuat dengan password admin yang lama.');
+    pesan = 'Login admin: username "admin" dengan password admin yang lama.';
   } else if (bolehAcak) {
     var sandi = Utilities.getUuid().replace(/-/g, '').slice(0, 12);
     akun.garam = Utilities.getUuid();
     akun.hash = hashSandi_(sandi, akun.garam);
     akun.wajib_ganti = true;
-    Logger.log('AKUN SUPERADMIN → username: admin · password awal: ' + sandi);
+    pesan = 'AKUN SUPERADMIN → username: admin · password awal: ' + sandi + ' (wajib diganti saat login pertama).';
   } else {
-    return;
+    return '';
   }
   tb.set(akun);
   tb.simpan();
   prop_('ADMIN_HASH', null);
+  Logger.log(pesan);
+  return pesan;
 }
 
 /** Sidik struktur semua sheet: berubah bila ada modul/kolom baru. */
@@ -138,7 +161,7 @@ function bersihkanContoh_() {
 function hanyaPemilik_() {
   var aktif = '', efektif = '';
   try { aktif = Session.getActiveUser().getEmail(); efektif = Session.getEffectiveUser().getEmail(); } catch (e) { /* abaikan */ }
-  if (!aktif || aktif !== efektif) throw new Error('Fungsi ini hanya bisa dijalankan pemilik dari editor Apps Script.');
+  if (!aktif || aktif !== efektif) throw new Error('Fungsi ini hanya bisa dijalankan pemilik dari editor Apps Script atau menu Sheet.');
 }
 
 function pasangTrigger_() {
@@ -161,11 +184,14 @@ function tugasPerJam() {
 /** Menu di Google Sheet. */
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Yayasan')
-    .addItem('Setup / perbarui struktur', 'setup')
-    .addItem('Perbarui dari GitHub', 'perbaruiDariGitHub')
+    .addItem('Tampilkan URL panel admin', 'tampilkanUrlAdmin')
     .addItem('Sinkron kontributor sekarang', 'sinkronSemua')
     .addItem('Segarkan cache website', 'naikkanVersiCache')
-    .addItem('Tampilkan URL panel admin', 'tampilkanUrlAdmin')
+    .addSeparator()
+    .addItem('Perbarui sistem dari GitHub', 'perbaruiSistem')
+    .addItem('Kembalikan versi sebelumnya', 'kembalikanVersiSebelumnya')
+    .addItem('Setup / perbarui struktur', 'setup')
+    .addItem('Reset password admin', 'resetPasswordAdmin')
     .addToUi();
 }
 

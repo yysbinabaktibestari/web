@@ -1,16 +1,14 @@
 /**
  * KONFIGURASI UTAMA
  * ------------------------------------------------------------------
- * Ubah nilai di bawah sesuai kebutuhan. ID folder Drive, ID spreadsheet
- * dan password admin disimpan otomatis oleh setup() di Script Properties.
+ * Ubah nilai di bawah sesuai kebutuhan LANGSUNG DI GITHUB (file ini),
+ * lalu klik "Perbarui sistem" di panel admin. ID folder Drive & spreadsheet
+ * disimpan otomatis oleh setup() di Script Properties.
+ * Alamat repo sumber update diatur di Pemuat.gs (proyek Apps Script).
  */
 var CONFIG = {
   // Alamat website di GitHub Pages (dipakai untuk tautan di RSS / JSON Feed)
   SITE_URL: 'https://yysbinabaktibestari.github.io/web/',
-
-  // Sumber pembaruan otomatis (menu Yayasan › Perbarui dari GitHub / tombol di panel admin)
-  GITHUB_REPO: 'yysbinabaktibestari/web',
-  GITHUB_CABANG: 'main',
 
   ZONA_WAKTU: 'Asia/Jakarta',
 

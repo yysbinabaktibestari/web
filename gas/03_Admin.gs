@@ -15,7 +15,10 @@
 var ADMIN_AKTIF = null;
 
 function halamanAdmin_() {
-  return HtmlService.createHtmlOutputFromFile('Admin')
+  // Saat dijalankan lewat Pemuat.gs, Admin.html ikut tersimpan sebagai teks (BERKAS_HTML_).
+  var html = (typeof BERKAS_HTML_ !== 'undefined' && BERKAS_HTML_.Admin)
+    ? HtmlService.createHtmlOutput(BERKAS_HTML_.Admin) : HtmlService.createHtmlOutputFromFile('Admin');
+  return html
     .setTitle('Panel Admin – ' + namaSitus_())
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
@@ -174,6 +177,7 @@ var ADMIN_API = {
         offset: fmt_(new Date(), 'XXX')
       },
       saya: { nama: akun.nama, username: akun.username, peran: akun.peran, super: akun.super, wajibGanti: akun.wajibGanti },
+      sistem: akun.super ? infoSistem_() : null,
       modul: daftarModul_().map(function (m) {
         var sheets = (m.sheets || []).filter(function (s) { return bolehSheet_(akun, s.nama); });
         return {
@@ -352,10 +356,10 @@ var ADMIN_API = {
     return hasil;
   },
 
-  /** Superadmin: tarik kode terbaru dari GitHub & perbarui deployment (lihat 98_Pembaru.gs). */
+  /** Superadmin: tarik kode terbaru dari GitHub (lihat 98_Pembaru.gs & pasang/Pemuat.gs). */
   perbaruiSistem: function () {
     if (!ADMIN_AKTIF.super) throw new Error('Hanya Superadmin yang bisa memperbarui sistem.');
-    var h = pembaruanDariGitHub_();
+    var h = pembaruanSistem_();
     catatLog_('perbarui sistem', '', '', h.pesan);
     return h;
   },
