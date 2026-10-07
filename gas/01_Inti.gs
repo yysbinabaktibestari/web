@@ -11,29 +11,29 @@
 var MODUL = MODUL || {};
 
 /** Daftar modul aktif, terurut. */
-function daftarModul() {
+function daftarModul_() {
   return Object.keys(MODUL)
     .filter(function (id) { return CONFIG.MODUL_NONAKTIF.indexOf(id) < 0; })
     .map(function (id) { var m = MODUL[id]; m.id = id; return m; })
     .sort(function (a, b) { return (a.urutan || 99) - (b.urutan || 99); });
 }
 
-function semuaSheetDef() {
+function semuaSheetDef_() {
   var out = [];
-  daftarModul().forEach(function (m) {
+  daftarModul_().forEach(function (m) {
     (m.sheets || []).forEach(function (s) { s.modul = m.id; out.push(s); });
   });
   return out;
 }
 
-function sheetDef(nama) {
-  var d = semuaSheetDef().filter(function (s) { return s.nama === nama; })[0];
+function sheetDef_(nama) {
+  var d = semuaSheetDef_().filter(function (s) { return s.nama === nama; })[0];
   if (!d) throw new Error('Sheet tidak terdaftar: ' + nama);
   return d;
 }
 
 function cariAksi_(nama, metode) {
-  var mods = daftarModul();
+  var mods = daftarModul_();
   for (var i = 0; i < mods.length; i++) {
     var tabel = metode === 'post' ? mods[i].publikPost : mods[i].publik;
     if (tabel && tabel[nama]) return tabel[nama];
@@ -47,6 +47,7 @@ function cariAksi_(nama, metode) {
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
+  try { pastikanStruktur_(); } catch (x) { console.error('struktur: ' + pesanError_(x)); }
   if (p.admin !== undefined) return halamanAdmin_();
   var aksi = p.action || 'info';
   try {
@@ -65,6 +66,7 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  try { pastikanStruktur_(); } catch (x) { console.error('struktur: ' + pesanError_(x)); }
   var body = {};
   try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (x) { body = {}; }
   var aksi = body.action || ((e && e.parameter) || {}).action;
@@ -101,14 +103,14 @@ function pesanError_(err) { return String((err && err.message) || err); }
 function versiCache_() {
   var c = CacheService.getScriptCache();
   var v = c.get('__ver');
-  if (!v) { v = prop('CACHE_VER') || '1'; c.put('__ver', v, 21600); }
+  if (!v) { v = prop_('CACHE_VER') || '1'; c.put('__ver', v, 21600); }
   return v;
 }
 
 /** Panggil setelah data berubah agar semua cache publik segar. */
 function naikkanVersiCache() {
-  var v = String(Number(prop('CACHE_VER') || '1') + 1);
-  prop('CACHE_VER', v);
+  var v = String(Number(prop_('CACHE_VER') || '1') + 1);
+  prop_('CACHE_VER', v);
   CacheService.getScriptCache().put('__ver', v, 21600);
   return v;
 }
@@ -244,7 +246,7 @@ function batasiFrekuensi_(kunci, detik, pesan) {
 /** Pengaturan situs sebagai objek {kunci: nilai}. Kunci berawalan "_" bersifat privat. */
 function pengaturan_(semua) {
   var o = {};
-  bacaTabel('Pengaturan').forEach(function (r) {
+  bacaTabel_('Pengaturan').forEach(function (r) {
     if (!r.kunci) return;
     if (!semua && String(r.kunci).charAt(0) === '_') return;
     o[r.kunci] = r.nilai;

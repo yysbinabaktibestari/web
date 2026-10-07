@@ -50,7 +50,7 @@ MODUL.kontributor = {
     kontributor: function () {
       var jumlah = {};
       artikelTayang_().forEach(function (a) { if (a.kontributor) jumlah[a.kontributor.slug] = (jumlah[a.kontributor.slug] || 0) + 1; });
-      return publikSaja_('Kontributor', bacaTabel('Kontributor'))
+      return publikSaja_('Kontributor', bacaTabel_('Kontributor'))
         .filter(function (k) { return k.status === STATUS.TAYANG && k.slug; })
         .map(function (k) { return ringkasKontributor_(k, jumlah[k.slug] || 0); })
         .sort(function (a, b) { return a.nama.localeCompare(b.nama); });
@@ -91,7 +91,7 @@ MODUL.kontributor = {
       var lock = LockService.getScriptLock();
       lock.waitLock(20000);
       try {
-        var tb = new Tabel('Kontributor');
+        var tb = new Tabel_('Kontributor');
         var ada = tb.objek().filter(function (k) { return String(k.email).toLowerCase() === email.toLowerCase(); })[0];
         if (ada) throw new Error('Email ini sudah terdaftar sebagai kontributor. Hubungi admin untuk perubahan.');
         tb.set({
@@ -109,6 +109,13 @@ MODUL.kontributor = {
       naikkanVersiCache();
       return { pesan: 'Pendaftaran diterima. Artikel Anda mulai tampil setelah sinkronisasi berikutnya (paling lama ±1 jam).' };
     }
+  },
+
+  /** Daftar ringkas kontributor untuk filter di halaman Artikel. */
+  bootstrap: function () {
+    return { kontributor: MODUL.kontributor.publik.kontributor().map(function (k) {
+      return { nama: k.nama, slug: k.slug, foto: k.foto, website: k.website, bio: potong_(k.bio, 280), jumlah_artikel: k.jumlah_artikel };
+    }) };
   },
 
   beranda: function () {
@@ -154,7 +161,7 @@ function ringkasKontributor_(k, jumlah) {
 }
 
 function profilKontributor_(slug) {
-  var k = publikSaja_('Kontributor', bacaTabel('Kontributor'))
+  var k = publikSaja_('Kontributor', bacaTabel_('Kontributor'))
     .filter(function (x) { return x.slug === slug && x.status === STATUS.TAYANG; })[0];
   return k ? ringkasKontributor_(k, 0) : null;
 }
@@ -174,7 +181,7 @@ function sinkronKontributor_(ids) {
   var detail = [];
   try {
     var mulai = Date.now();
-    var tk = new Tabel('Kontributor'), ta = new Tabel('Artikel');
+    var tk = new Tabel_('Kontributor'), ta = new Tabel_('Artikel');
     var daftar = tk.objek().filter(function (k) {
       return k.sumber_url && (!ids || ids.indexOf(k.id) >= 0);
     }).sort(function (a, b) { return String(a.terakhir_sinkron).localeCompare(String(b.terakhir_sinkron)); });
@@ -205,11 +212,14 @@ function sinkronKontributor_(ids) {
 }
 
 /** Fungsi untuk trigger per jam. */
-function sinkronSemua() { return sinkronKontributor_(null); }
+function sinkronSemua() {
+  try { batasiFrekuensi_('sinkronSemua', 120); } catch (e) { return { ringkas: 'Sinkron baru saja dijalankan.', detail: [] }; }
+  return sinkronKontributor_(null);
+}
 
 function petaKategori_() {
   var m = {};
-  bacaTabel('Kategori').forEach(function (k) {
+  bacaTabel_('Kategori').forEach(function (k) {
     m[String(k.slug).toLowerCase()] = k.slug;
     m[String(k.nama).toLowerCase()] = k.slug;
   });
@@ -247,8 +257,9 @@ function sinkronFolder_(k, ta, kat, batas) {
     var isi = htmlDoc_(d.file.getId());
     ta.set({
       id: id,
-      judul: d.file.getName().replace(/\.(docx?|gdoc)$/i, ''),
-      slug: lama ? lama.slug : slugUnik_(d.file.getName(), ta),
+      judul: bersihJudul_(d.file.getName()),
+      slug: lama ? lama.slug : slugUnik_(bersihJudul_(d.file.getName()), ta),
+      status_kurasi: lama ? lama.status_kurasi : 'Belum dikurasi',
       kategori: (lama && lama.kategori) || kat[d.sub.toLowerCase()] || k.kategori_default || '',
       status: lama ? lama.status : (k.status_artikel_baru || CONFIG.ARTIKEL_KONTRIBUTOR_STATUS_DEFAULT),
       sumber: 'folder',
@@ -304,8 +315,9 @@ function sinkronFeed_(k, ta, kat) {
     var fileId = simpanFileCache_(id + '.html', html, hash);
     ta.set({
       id: id,
-      judul: potong_(it.judul, 200),
-      slug: lama ? lama.slug : slugUnik_(it.judul, ta),
+      judul: potong_(bersihJudul_(it.judul), 200),
+      slug: lama ? lama.slug : slugUnik_(bersihJudul_(it.judul), ta),
+      status_kurasi: lama ? lama.status_kurasi : 'Belum dikurasi',
       kategori: (lama && lama.kategori) || cocokKategori_(it.kategori, kat) || k.kategori_default || '',
       status: lama ? lama.status : (k.status_artikel_baru || CONFIG.ARTIKEL_KONTRIBUTOR_STATUS_DEFAULT),
       sumber: 'feed',

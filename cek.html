@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Cek koneksi backend</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<style>
+  .cek-wadah { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; display: flex; flex-direction: column; gap: 18px; }
+  .langkah-cek { display: flex; gap: 12px; align-items: flex-start; padding: 16px 18px; }
+  .langkah-cek b { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; }
+  .ok b { background: #18548C; } .gagal b { background: #AF5329; } .tunggu b { background: #B5C0CC; }
+  code { background: var(--abu); padding: 1px 6px; border-radius: 6px; font-size: 14px; overflow-wrap: anywhere; }
+  ol.saran { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+<main class="cek-wadah">
+  <h1 class="display" style="font-size:36px">Cek koneksi backend</h1>
+  <p class="redup" style="margin:0">Halaman ini untuk admin: memeriksa apakah website bisa membaca data dari Google Apps Script.</p>
+  <div id="hasil" style="display:flex;flex-direction:column;gap:12px"></div>
+  <section class="kartu" style="padding:22px;display:flex;flex-direction:column;gap:12px">
+    <h2 style="font-size:20px">Bila gagal (404 / tidak terhubung)</h2>
+    <ol class="saran">
+      <li>Di editor Apps Script: <b>Terapkan › Kelola deployment</b>. Pastikan ada deployment <i>Aplikasi web</i> yang aktif (bukan diarsipkan).</li>
+      <li>Klik ikon pensil: <b>Jalankan sebagai: Saya</b> dan <b>Yang memiliki akses: Siapa saja</b> (bukan "Siapa saja yang memiliki Akun Google"). Pilih <b>Versi: Versi baru</b> › Terapkan.</li>
+      <li>Salin <b>URL Aplikasi web</b> (berakhiran <code>/exec</code>) ke <code>assets/js/config.js</code> › <code>API_URL</code>.</li>
+      <li>Atau cukup jalankan <code>perbaruiDariGitHub</code> sekali: deployment diperbarui dengan pengaturan yang benar dan URL ditampilkan di log.</li>
+      <li>Bila memakai akun Google Workspace (domain lembaga), admin domain bisa melarang akses "Siapa saja". Pakai akun Gmail pribadi untuk Apps Script.</li>
+    </ol>
+  </section>
+</main>
+<script src="assets/js/config.js"></script>
+<script>
+(function () {
+  var el = document.getElementById('hasil');
+  function baris(status, judul, isi) {
+    var d = document.createElement('div');
+    d.className = 'kartu langkah-cek ' + status;
+    d.innerHTML = '<b>' + (status === 'ok' ? '✓' : status === 'gagal' ? '!' : '…') + '</b><div><strong>' + judul + '</strong><div class="redup" style="font-size:15px;margin-top:2px">' + isi + '</div></div>';
+    el.appendChild(d);
+    return d;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var url = (window.KONFIG && KONFIG.API_URL) || '';
+  if (!url) { baris('gagal', 'API_URL kosong', 'Website berjalan dalam mode demo. Isi <code>API_URL</code> di assets/js/config.js.'); return; }
+  baris(/\/exec$/.test(url) ? 'ok' : 'gagal', 'Format URL', '<code>' + esc(url) + '</code>' + (/\/exec$/.test(url) ? '' : '<br>URL harus berakhiran <code>/exec</code> (bukan /dev atau URL editor).'));
+  var b = baris('tunggu', 'Menghubungi Apps Script…', 'Mohon tunggu.');
+  var mulai = Date.now();
+  fetch(url + '?action=info&_=' + Date.now()).then(function (r) {
+    if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
+    return r.json();
+  }).then(function (j) {
+    b.remove();
+    if (!j.ok) { baris('gagal', 'Apps Script menjawab dengan galat', esc(j.error)); return; }
+    baris('ok', 'Terhubung (' + (Date.now() - mulai) + ' ms)', 'Nama: <b>' + esc(j.data.nama || '(belum diisi)') + '</b><br>Modul aktif: ' + esc((j.data.modul || []).join(', ')));
+    return fetch(url + '?action=bootstrap&_=' + Date.now()).then(function (r) { return r.json(); }).then(function (k) {
+      baris(k.ok ? 'ok' : 'gagal', 'Data website', k.ok ? 'Pengaturan, menu, dan kategori terbaca.' : esc(k.error));
+    });
+  }).catch(function (e) {
+    b.remove();
+    if (e.status === 404) baris('gagal', 'HTTP 404 dari Google', 'Deployment tidak ditemukan/diarsipkan, atau aksesnya bukan "Siapa saja". Ikuti langkah di bawah.');
+    else if (e.status) baris('gagal', 'HTTP ' + e.status, 'Server Apps Script menolak permintaan.');
+    else baris('gagal', 'Tidak bisa terhubung', 'Biasanya akses web app bukan "Siapa saja" (anonim), sehingga Google mengalihkan ke halaman login. Ikuti langkah di bawah.');
+  });
+})();
+</script>
+</body>
+</html>

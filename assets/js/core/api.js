@@ -23,6 +23,36 @@ var API = (function () {
     try { sessionStorage.setItem(k, JSON.stringify({ t: Date.now(), d: d })); } catch (e) { /* penuh: abaikan */ }
   }
 
+  function tunggu(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /** Penjelasan teknis untuk admin (tampil di console browser & halaman cek.html). */
+  function diagnosa(e) {
+    if (!/\/exec(\?|$)/.test(KONFIG.API_URL)) return 'API_URL di config.js harus berakhiran /exec (URL "Aplikasi web" dari deployment).';
+    if (e.status === 404) return 'HTTP 404 dari Google: deployment tidak ditemukan/diarsipkan, atau akses web app bukan "Siapa saja". Buka cek.html.';
+    if (e.status) return 'HTTP ' + e.status + ' dari server Apps Script.';
+    if (e instanceof TypeError) return 'Gagal terhubung. Biasanya akses web app bukan "Siapa saja" (anonim) atau koneksi terputus. Buka cek.html.';
+    return String(e.message || e);
+  }
+
+  /** fetch + 1x coba ulang untuk gangguan sementara. Galat jaringan diganti pesan ramah pengunjung. */
+  function ambil(url, opsi, ke) {
+    return fetch(url, opsi).then(function (r) {
+      if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
+      return r.json();
+    }).catch(function (e) {
+      if (e.dariServer) throw e;
+      if (!ke && e.status !== 404) return tunggu(900).then(function () { return ambil(url, opsi, 1); });
+      console.error('[Website Yayasan] ' + diagnosa(e), e);
+      var x = new Error('Data belum dapat dimuat. Silakan coba lagi beberapa saat.');
+      x.teknis = diagnosa(e);
+      throw x;
+    });
+  }
+  function hasil(j) {
+    if (!j || !j.ok) { var e = new Error((j && j.error) || 'Terjadi kesalahan.'); e.dariServer = true; throw e; }
+    return j.data;
+  }
+
   /** GET data. opsi.segar = abaikan cache browser. */
   function get(aksi, params, opsi) {
     if (!KONFIG.API_URL) return Demo.get(aksi, params || {});
@@ -31,13 +61,9 @@ var API = (function () {
       var c = bacaCache(k);
       if (c) return Promise.resolve(c);
     }
-    return fetch(urlAksi(aksi, params)).then(function (r) {
-      if (!r.ok) throw new Error('Server tidak merespons (' + r.status + ').');
-      return r.json();
-    }).then(function (j) {
-      if (!j.ok) throw new Error(j.error || 'Gagal memuat data.');
-      tulisCache(k, j.data);
-      return j.data;
+    return ambil(urlAksi(aksi, params)).then(hasil).then(function (d) {
+      tulisCache(k, d);
+      return d;
     });
   }
 
@@ -45,18 +71,12 @@ var API = (function () {
   function post(aksi, body) {
     if (!KONFIG.API_URL) return Demo.post(aksi, body || {});
     var isi = Object.assign({ action: aksi }, body || {});
-    return fetch(KONFIG.API_URL, { method: 'POST', body: JSON.stringify(isi) }).then(function (r) {
-      if (!r.ok) throw new Error('Server tidak merespons (' + r.status + ').');
-      return r.json();
-    }).then(function (j) {
-      if (!j.ok) throw new Error(j.error || 'Gagal mengirim data.');
-      return j.data;
-    });
+    return ambil(KONFIG.API_URL, { method: 'POST', body: JSON.stringify(isi) }, 1).then(hasil);
   }
 
   function feed(format, params) {
     return KONFIG.API_URL ? urlAksi('feed', Object.assign({ format: format || 'rss' }, params || {})) : '';
   }
 
-  return { get: get, post: post, feed: feed, url: urlAksi };
+  return { get: get, post: post, feed: feed, url: urlAksi, diagnosa: diagnosa };
 })();

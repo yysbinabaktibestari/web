@@ -96,10 +96,10 @@ MODUL.donasi = {
   publik: {
     donasi: function () {
       var kontak = {};
-      bacaTabel('KontakDonasi').forEach(function (k) { if (k.tampil !== false) kontak[k.id] = { nama: k.nama, wa: k.wa, keterangan: k.keterangan }; });
+      bacaTabel_('KontakDonasi').forEach(function (k) { if (k.tampil !== false) kontak[k.id] = { nama: k.nama, wa: k.wa, keterangan: k.keterangan }; });
       return {
         program: programAktif_(),
-        rekening: tampilUrut_(bacaTabel('Rekening')).map(function (r) {
+        rekening: tampilUrut_(bacaTabel_('Rekening')).map(function (r) {
           return { id: r.id, bank: r.bank, nomor: r.nomor, atas_nama: r.atas_nama, peruntukan: r.peruntukan, kontak: kontak[r.kontak] || null };
         }),
         kontak: Object.keys(kontak).map(function (k) { return kontak[k]; })
@@ -151,7 +151,7 @@ MODUL.donasi = {
 
 function terkumpulOtomatis_() {
   var t = {};
-  bacaTabel('Konfirmasi').forEach(function (k) {
+  bacaTabel_('Konfirmasi').forEach(function (k) {
     if (k.status === 'Diterima' && k.program) t[k.program] = (t[k.program] || 0) + (Number(k.nominal) || 0);
   });
   return t;
@@ -159,7 +159,7 @@ function terkumpulOtomatis_() {
 
 function programAktif_() {
   var hariIni = hariIni_(), auto = null;
-  return bacaTabel('Program').filter(function (p) {
+  return bacaTabel_('Program').filter(function (p) {
     return p.aktif !== false && (!p.mulai || p.mulai <= hariIni) && (!p.selesai || p.selesai >= hariIni);
   }).map(function (p) {
     var terkumpul = p.terkumpul;
@@ -174,7 +174,7 @@ function programAktif_() {
 
 function sematanAktif_() {
   var hariIni = hariIni_();
-  var s = bacaTabel('Sematan').filter(function (x) {
+  var s = bacaTabel_('Sematan').filter(function (x) {
     return x.aktif !== false && (!x.mulai || x.mulai <= hariIni) && (!x.selesai || x.selesai >= hariIni);
   }).sort(function (a, b) { return (a.urutan || 0) - (b.urutan || 0); })[0];
   if (!s) return null;

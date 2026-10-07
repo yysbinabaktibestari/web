@@ -44,6 +44,18 @@
   nav#side button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:9px 10px;border-radius:8px;cursor:pointer;font-weight:500}
   nav#side button:hover{background:var(--abu)}
   nav#side button.aktif{background:var(--biru-muda);color:var(--biru);font-weight:700}
+  nav#side .zona-sistem{margin:22px -12px -16px;padding:14px 12px 18px;background:var(--gelap);border-top:3px solid #E3B04B;min-height:120px}
+  nav#side .zona-sistem .grup{color:#E3B04B;display:flex;align-items:center;gap:8px;margin-top:0}
+  nav#side .zona-sistem button{color:#D6E0EC}
+  nav#side .zona-sistem button:hover{background:#163A5E}
+  nav#side .zona-sistem button.aktif{background:#E3B04B;color:var(--gelap)}
+  nav#side .zona-ket{font-size:12px;color:#9FB3C8;margin:0 8px 8px}
+  .pita-sistem{display:flex;align-items:center;gap:10px;background:var(--gelap);color:#E3B04B;border-radius:12px;padding:10px 14px;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px;align-self:flex-start}
+  .filter-cepat{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .filter-cepat button{height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--garis-input);background:#fff;font-size:13px;font-weight:600;cursor:pointer}
+  .filter-cepat button.aktif{background:var(--biru);border-color:var(--biru);color:#fff}
+  .top .saya{font-size:13px;color:#D6E0EC}
+  .top .saya strong{color:#fff}
   main{flex:1;min-width:0;padding:28px 24px 64px}
   .kepala{display:flex;flex-direction:column;gap:4px;margin-bottom:18px}
   .kepala h1{font-size:32px;line-height:1.15}
@@ -93,6 +105,10 @@
     <h1 id="loginNama">Panel Admin</h1>
     <p style="margin:0;color:var(--redup)">Masuk untuk mengelola website.</p>
     <div class="medan">
+      <label for="un">Username / email</label>
+      <input id="un" type="text" autocomplete="username" autocapitalize="none" required>
+    </div>
+    <div class="medan">
       <label for="pw">Password</label>
       <input id="pw" type="password" autocomplete="current-password" required>
     </div>
@@ -107,6 +123,9 @@
     <span class="brand" id="brand"></span>
     <span class="sub">Panel Admin</span>
     <span class="kanan">
+      <span class="saya" id="saya"></span>
+      <button id="gantiSandi" type="button">Ganti password</button>
+      <button id="perbarui" type="button" hidden>Perbarui sistem</button>
       <a id="lihatSitus" href="#" target="_blank" rel="noopener">Lihat website</a>
       <a id="bukaSheet" href="#" target="_blank" rel="noopener">Google Sheet</a>
       <button id="keluar" type="button">Keluar</button>
@@ -146,30 +165,36 @@ $('formLogin').addEventListener('submit', function (ev) {
   ev.preventDefault();
   var btn = ev.target.querySelector('button'); btn.disabled = true; $('loginGalat').hidden = true;
   google.script.run.withSuccessHandler(function (r) {
-    S.token = r.token; try { sessionStorage.setItem('adm_t', r.token); } catch (e) {}
+    S.token = r.token; try { sessionStorage.setItem('adm_t', r.token); try { localStorage.setItem('adm_un', $('un').value.trim()); } catch (e) {} } catch (e) {}
     btn.disabled = false; $('pw').value = ''; mulai();
   }).withFailureHandler(function (e) {
     btn.disabled = false; $('loginGalat').textContent = pesanGalat(e); $('loginGalat').hidden = false;
-  }).adminMasuk($('pw').value);
+  }).adminMasuk($('un').value.trim(), $('pw').value);
 });
 
 function keluar(habis) {
   if (!habis && S.token) google.script.run.adminKeluar(S.token);
   S.token = null; try { sessionStorage.removeItem('adm_t'); } catch (e) {}
-  $('app').hidden = true; $('login').hidden = false; $('pw').focus();
+  $('app').hidden = true; $('login').hidden = false; isiUsername(); $('pw').focus();
   if (habis) { $('loginGalat').textContent = 'Sesi berakhir. Silakan masuk lagi.'; $('loginGalat').hidden = false; }
 }
 $('keluar').onclick = function () { keluar(false); };
 $('menuBtn').onclick = function () { $('side').classList.toggle('buka'); };
 
+function isiUsername() { try { var u = localStorage.getItem('adm_un'); if (u && !$('un').value) $('un').value = u; } catch (e) {} }
+
 function mulai() {
-  if (!S.token) { $('login').hidden = false; $('pw').focus(); return; }
+  if (!S.token) { $('login').hidden = false; isiUsername(); ($('un').value ? $('pw') : $('un')).focus(); return; }
   panggil('skema').then(function (sk) {
     S.skema = sk;
     $('login').hidden = true; $('app').hidden = false;
     $('brand').textContent = sk.situs.nama;
     $('lihatSitus').href = sk.situs.url;
     $('bukaSheet').href = sk.situs.sheet || '#';
+    $('bukaSheet').hidden = !sk.situs.sheet;
+    $('saya').innerHTML = '<strong>' + esc(sk.saya.nama) + '</strong> · ' + esc(sk.saya.peran);
+    $('perbarui').hidden = !sk.saya.super;
+    if (sk.saya.wajibGanti) formSandi(true);
     menu();
     var m0 = sk.modul[0];
     var simpanan = null; try { simpanan = JSON.parse(sessionStorage.getItem('adm_buka') || 'null'); } catch (e) {}
@@ -188,41 +213,54 @@ function cariSheet(mid, nama) {
 }
 
 function menu() {
-  var h = '';
-  S.skema.modul.forEach(function (m) {
-    h += '<div class="grup">' + esc(m.judul) + '</div>';
-    m.sheets.forEach(function (s) {
-      h += '<button type="button" data-m="' + esc(m.id) + '" data-s="' + esc(s.nama) + '">' + esc(s.judul) + '</button>';
-    });
-  });
-  $('side').innerHTML = h;
+  function grup(m) {
+    return '<div class="grup">' + (m.zona === 'sistem' ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/></svg>' : '') + esc(m.judul) + '</div>' +
+      m.sheets.map(function (s) { return '<button type="button" data-m="' + esc(m.id) + '" data-s="' + esc(s.nama) + '">' + esc(s.judul) + '</button>'; }).join('');
+  }
+  var konten = S.skema.modul.filter(function (m) { return m.zona !== 'sistem'; });
+  var sistem = S.skema.modul.filter(function (m) { return m.zona === 'sistem'; });
+  $('side').innerHTML = konten.map(grup).join('') +
+    (sistem.length ? '<div class="zona-sistem" role="group" aria-label="Zona Superadmin">' + sistem.map(grup).join('') +
+      '<p class="zona-ket">Khusus Superadmin · perubahan di sini memengaruhi akses semua admin.</p></div>' : '');
   $('side').querySelectorAll('button').forEach(function (b) {
     b.onclick = function () { var c = cariSheet(b.dataset.m, b.dataset.s); buka(c.m, c.s); $('side').classList.remove('buka'); };
   });
 }
 
 function buka(m, s) {
-  S.modul = m; S.sheet = s; S.hal = 1; S.q = ''; S.pilih = {};
+  S.modul = m; S.sheet = s; S.hal = 1; S.q = ''; S.pilih = {}; S.filter = {};
   try { sessionStorage.setItem('adm_buka', JSON.stringify([m.id, s.nama])); } catch (e) {}
   $('side').querySelectorAll('button').forEach(function (b) { b.classList.toggle('aktif', b.dataset.m === m.id && b.dataset.s === s.nama); });
   var alat = s.alat.map(function (a) {
     return '<button type="button" class="btn ' + (a.gaya === 'utama' ? 'utama' : '') + '" data-alat="' + esc(a.id) + '">' + esc(a.label) + '</button>';
   }).join('');
   $('main').innerHTML =
+    (m.zona === 'sistem' ? '<div class="pita-sistem">Zona Superadmin · ' + esc(m.judul) + '</div>' : '') +
     '<div class="kepala"><h1>' + esc(s.judul) + '</h1>' + (s.keterangan ? '<p>' + esc(s.keterangan) + '</p>' : '') + '</div>' +
     '<div class="toolbar">' +
       '<input type="search" id="cari" placeholder="Cari…" aria-label="Cari di tabel">' +
       (s.bisaTambah ? '<button type="button" class="btn utama" id="tambah">+ Tambah</button>' : '') +
       alat +
       '<span class="sela"></span>' +
-      '<button type="button" class="btn" id="ekspor">Unduh Excel (.xlsx)</button>' +
+      (s.bisaEkspor ? '<button type="button" class="btn" id="ekspor">Unduh Excel (.xlsx)</button>' : '') +
       (s.bisaHapus ? '<button type="button" class="btn" id="hapus" disabled>Hapus terpilih (0)</button>' : '') +
     '</div>' +
+    (s.filterCepat.length ? '<div class="filter-cepat" role="group" aria-label="Filter cepat"><button type="button" class="aktif" data-fc="">Semua</button>' +
+      s.filterCepat.map(function (f, i) { return '<button type="button" data-fc="' + i + '">' + esc(f.label) + '</button>'; }).join('') + '</div>' : '') +
     '<div class="kartu"><div class="tabel-wrap" id="tabel"></div><div class="paging" id="paging"></div></div>';
   var t;
   $('cari').oninput = function (ev) { clearTimeout(t); t = setTimeout(function () { S.q = ev.target.value; S.hal = 1; muat(); }, 350); };
   if ($('tambah')) $('tambah').onclick = function () { form(null); };
-  $('ekspor').onclick = ekspor;
+  if ($('ekspor')) $('ekspor').onclick = ekspor;
+  $('main').querySelectorAll('[data-fc]').forEach(function (b) {
+    b.onclick = function () {
+      var f = b.dataset.fc === '' ? null : s.filterCepat[Number(b.dataset.fc)];
+      S.filter = {}; if (f) S.filter[f.k] = f.v;
+      S.hal = 1; S.pilih = {};
+      $('main').querySelectorAll('[data-fc]').forEach(function (x) { x.classList.toggle('aktif', x === b); });
+      muat();
+    };
+  });
   if ($('hapus')) $('hapus').onclick = hapus;
   $('main').querySelectorAll('[data-alat]').forEach(function (b) {
     b.onclick = function () { jalankanAlat(s.alat.filter(function (a) { return a.id === b.dataset.alat; })[0]); };
@@ -236,7 +274,7 @@ function kolomTampil() {
 
 function muat() {
   $('tabel').classList.add('muat');
-  panggil('daftar', S.sheet.nama, { q: S.q, halaman: S.hal, per: S.per }).then(function (r) {
+  panggil('daftar', S.sheet.nama, { q: S.q, filter: S.filter, halaman: S.hal, per: S.per }).then(function (r) {
     S.baris = r.baris; S.total = r.total;
     $('tabel').classList.remove('muat');
     tabel();
@@ -256,7 +294,7 @@ function nilaiSel(c, v) {
     return esc(o ? o.l : v);
   }
   if (c.t === 'select') {
-    var warna = { 'Tayang': 'c-biru', 'Diterima': 'c-biru', 'Draf': 'c-emas', 'Belum dicek': 'c-emas', 'Tidak tayang': 'c-abu', 'Ditolak': 'c-karat' }[v];
+    var warna = { 'Tayang': 'c-biru', 'Diterima': 'c-biru', 'Dikurasi': 'c-biru', 'Draf': 'c-emas', 'Belum dicek': 'c-emas', 'Belum dikurasi': 'c-emas', 'Tidak tayang': 'c-abu', 'Ditolak': 'c-karat' }[v];
     if (warna) return '<span class="chip ' + warna + '">' + esc(v) + '</span>';
   }
   return '<div class="sel-teks" title="' + esc(v) + '">' + esc(v) + '</div>';
@@ -377,7 +415,7 @@ function hapus() {
 
 function ekspor() {
   var b = $('ekspor'); b.disabled = true; b.textContent = 'Menyiapkan…';
-  panggil('ekspor', S.sheet.nama, S.q).then(function (r) {
+  panggil('ekspor', S.sheet.nama, S.q, S.filter).then(function (r) {
     var bin = atob(r.base64), arr = new Uint8Array(bin.length);
     for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     var url = URL.createObjectURL(new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
@@ -387,8 +425,43 @@ function ekspor() {
   }).catch(function (e) { b.disabled = false; b.textContent = 'Unduh Excel (.xlsx)'; alert(pesanGalat(e)); });
 }
 
+function formSandi(wajib) {
+  modal('<h2>' + (wajib ? 'Buat password baru' : 'Ganti password') + '</h2>' +
+    (wajib ? '<p style="margin:0;color:var(--redup)">Akun Anda memakai password sementara. Ganti dulu sebelum melanjutkan.</p>' : '') +
+    '<form id="formSandi" novalidate style="display:flex;flex-direction:column;gap:14px">' +
+    '<div class="medan"><label for="s_lama">Password ' + (wajib ? 'sementara' : 'saat ini') + '</label><input id="s_lama" type="password" autocomplete="current-password" required></div>' +
+    '<div class="medan"><label for="s_baru">Password baru (min. 8 karakter)</label><input id="s_baru" type="password" autocomplete="new-password" required></div>' +
+    '<div class="medan"><label for="s_ulang">Ulangi password baru</label><input id="s_ulang" type="password" autocomplete="new-password" required></div>' +
+    '<div id="sandiGalat" class="galat" hidden></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end">' + (wajib ? '' : '<button type="button" class="btn" onclick="tutupModal()">Batal</button>') +
+    '<button class="btn utama" type="submit">Simpan password</button></div></form>');
+  $('modal').dataset.wajib = wajib ? '1' : '';
+  $('s_lama').focus();
+  $('formSandi').onsubmit = function (ev) {
+    ev.preventDefault();
+    var g = $('sandiGalat'), baru = $('s_baru').value;
+    if (baru.length < 8) { g.textContent = 'Password baru minimal 8 karakter.'; g.hidden = false; return; }
+    if (baru !== $('s_ulang').value) { g.textContent = 'Ulangan password tidak sama.'; g.hidden = false; return; }
+    var b = ev.target.querySelector('[type=submit]'); b.disabled = true;
+    panggil('gantiSandiSaya', $('s_lama').value, baru).then(function (r) {
+      $('modal').dataset.wajib = ''; tutupModal(); toast(r.pesan);
+    }).catch(function (e) { b.disabled = false; g.textContent = pesanGalat(e); g.hidden = false; });
+  };
+}
+$('gantiSandi').onclick = function () { formSandi(false); };
+$('perbarui').onclick = function () {
+  if (!confirm('Tarik kode terbaru dari GitHub dan perbarui sistem sekarang? Proses ±30 detik.')) return;
+  var b = $('perbarui'); b.disabled = true; b.textContent = 'Memperbarui…';
+  panggil('perbaruiSistem').then(function (h) {
+    b.disabled = false; b.textContent = 'Perbarui sistem';
+    modal('<h2>Sistem diperbarui</h2><p style="margin:0">' + esc(h.pesan) + '</p>' +
+      (h.url ? '<p style="margin:0;font-size:14px;color:var(--redup)">URL web app: ' + esc(h.url) + '</p>' : '') +
+      '<div style="display:flex;justify-content:flex-end"><button class="btn utama" type="button" onclick="location.reload()">Muat ulang panel</button></div>');
+  }).catch(function (e) { b.disabled = false; b.textContent = 'Perbarui sistem'; alert(pesanGalat(e)); });
+};
+
 function modal(html) { $('modal').innerHTML = '<div class="kotak" role="dialog" aria-modal="true">' + html + '</div>'; $('modal').hidden = false; }
-function tutupModal() { $('modal').hidden = true; $('modal').innerHTML = ''; }
+function tutupModal() { if ($('modal').dataset.wajib) return; $('modal').hidden = true; $('modal').innerHTML = ''; }
 $('modal').onclick = function (ev) { if (ev.target === $('modal')) tutupModal(); };
 
 function jalankanAlat(a) {

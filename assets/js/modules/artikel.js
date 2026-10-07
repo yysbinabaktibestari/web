@@ -9,7 +9,7 @@
       (a.kategori_nama ? U.chip(a.warna, a.kategori_nama) : '') +
       '<h3>' + esc(a.judul) + '</h3>' +
       (a.ringkasan ? '<p>' + esc(a.ringkasan) + '</p>' : '') +
-      '<span class="meta">' + (a.penulis ? '<span>' + esc(a.penulis) + '</span><span aria-hidden="true">·</span>' : '') +
+      '<span class="meta">' + (a.penulis ? '<span class="penulis-kecil">' + (a.kontributor ? U.avatar(a.penulis, a.kontributor.foto, 'kecil') : '') + esc(a.penulis) + '</span><span aria-hidden="true">·</span>' : '') +
         '<time datetime="' + esc(a.tanggal) + '">' + U.tgl(a.tanggal, true) + '</time></span>' +
     '</a>';
   }
@@ -38,30 +38,64 @@
   App.bersama.kartuArtikel = kartu;
   App.bersama.paginasi = paginasi;
 
+  /** Baris filter penulis/kontributor + kartu perkenalan saat salah satu dipilih. */
+  function filterPenulis(q) {
+    var data = App.data(), kon = data.kontributor || [];
+    if (!kon.length) return '';
+    var nama = data.situs.nama_yayasan || 'Yayasan';
+    var pilihan = [{ slug: '', nama: 'Semua penulis' }, { slug: 'yayasan', nama: nama, logo: data.situs.logo, yayasan: true }].concat(kon);
+    var baris = pilihan.map(function (k) {
+      var on = (q.kontributor || '') === k.slug;
+      var ikon = k.slug === '' ? '' : k.yayasan
+        ? '<span class="avatar kecil" style="background:var(--biru);color:#fff">' + (k.logo ? '<img src="' + esc(k.logo) + '" alt="">' : U.ikon('buku', 14)) + '</span>'
+        : U.avatar(k.nama, k.foto, 'kecil');
+      return '<a class="pil pil-penulis' + (on ? ' aktif' : '') + '"' + (on ? ' aria-current="page"' : '') + ' href="' +
+        U.hash('artikel', { kontributor: k.slug, kategori: q.kategori }) + '">' + ikon + '<span>' + esc(k.nama) + '</span>' +
+        (k.jumlah_artikel ? '<span class="jumlah">' + k.jumlah_artikel + '</span>' : '') + '</a>';
+    }).join('');
+    var kenalan = '';
+    var dipilih = kon.filter(function (k) { return k.slug === q.kontributor; })[0];
+    if (dipilih) {
+      kenalan = '<div class="kartu kenalan">' + U.avatar(dipilih.nama, dipilih.foto, 'besar') +
+        '<div style="flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:6px"><span class="chip c-biru">Kontributor</span>' +
+        '<h2 class="display" style="font-size:26px">' + esc(dipilih.nama) + '</h2>' +
+        (dipilih.bio ? '<p class="redup" style="margin:0">' + esc(dipilih.bio) + '</p>' : '') +
+        '<span style="display:flex;flex-wrap:wrap;gap:8px 18px;font-weight:600;font-size:15px">' +
+          '<a href="#/kontributor/' + encodeURIComponent(dipilih.slug) + '">Profil lengkap →</a>' +
+          (dipilih.website ? '<a href="' + esc(dipilih.website) + '" target="_blank" rel="noopener">' + esc(U.domain(dipilih.website)) + '</a>' : '') +
+        '</span></div></div>';
+    } else if (q.kontributor === 'yayasan') {
+      kenalan = '<div class="kartu kenalan"><div><span class="chip c-emas">Tulisan internal</span><h2 class="display" style="font-size:26px;margin-top:6px">' + esc(nama) + '</h2>' +
+        '<p class="redup" style="margin:4px 0 0">Artikel yang ditulis pengurus dan tim ' + esc(nama) + '.</p></div></div>';
+    }
+    return '<div class="filter-penulis"><span class="label">Penulis</span><div class="baris-penulis" role="list" aria-label="Filter penulis">' + baris + '</div></div>' + kenalan;
+  }
+
   function daftar(el, p, q) {
     var hal = Math.max(1, Number(q.halaman) || 1);
-    return API.get('artikel', { kategori: q.kategori, q: q.q, halaman: hal }).then(function (d) {
+    return API.get('artikel', { kategori: q.kategori, kontributor: q.kontributor, q: q.q, halaman: hal }).then(function (d) {
       var kat = App.data().kategori || [];
       var aktif = kat.filter(function (k) { return k.slug === q.kategori; })[0];
       App.judul(aktif ? aktif.nama : 'Artikel');
       var pil = [{ slug: '', nama: 'Semua' }].concat(kat).map(function (k) {
         var on = (q.kategori || '') === k.slug;
-        return '<a class="pil' + (on ? ' aktif' : '') + '"' + (on ? ' aria-current="page"' : '') + ' href="' + U.hash('artikel', { kategori: k.slug, q: q.q }) + '">' + esc(k.nama) + '</a>';
+        return '<a class="pil' + (on ? ' aktif' : '') + '"' + (on ? ' aria-current="page"' : '') + ' href="' + U.hash('artikel', { kategori: k.slug, kontributor: q.kontributor, q: q.q }) + '">' + esc(k.nama) + '</a>';
       }).join('');
       el.innerHTML = '<div class="wadah">' +
         '<header class="kepala-halaman"><h1>' + esc(aktif ? aktif.nama : 'Artikel') + '</h1>' +
-          '<p>' + (q.q ? 'Hasil pencarian “' + esc(q.q) + '”' : 'Tulisan dari pengurus dan kontributor yayasan.') + '</p></header>' +
+          '<p>' + (q.q ? 'Hasil pencarian “' + esc(q.q) + '”' : 'Tulisan dari pengurus dan kontributor yayasan, disusun bergiliran antar penulis.') + '</p></header>' +
         '<div class="filter"><div class="chips" role="list" aria-label="Kategori">' + pil + '</div>' +
           '<form class="medan" id="cari-artikel" role="search" style="flex:0 1 320px"><label for="q-artikel">Cari artikel</label>' +
           '<input id="q-artikel" type="search" value="' + esc(q.q || '') + '" placeholder="Judul atau kata kunci"></form></div>' +
+        filterPenulis(q) +
         (d.disematkan || []).map(kartuSematan).join('') +
         (d.items.length ? '<div class="grid">' + d.items.map(kartu).join('') + '</div>'
-          : '<p class="kosong">Belum ada artikel' + (q.q || q.kategori ? ' yang cocok' : '') + '.</p>') +
-        paginasi(d.halaman, d.jumlahHalaman, function (n) { return U.hash('artikel', { kategori: q.kategori, q: q.q, halaman: n }); }) +
+          : '<p class="kosong">Belum ada artikel' + (q.q || q.kategori || q.kontributor ? ' yang cocok' : '') + '.</p>') +
+        paginasi(d.halaman, d.jumlahHalaman, function (n) { return U.hash('artikel', { kategori: q.kategori, kontributor: q.kontributor, q: q.q, halaman: n }); }) +
         '<div style="height:80px"></div></div>';
       el.querySelector('#cari-artikel').onsubmit = function (ev) {
         ev.preventDefault();
-        location.hash = U.hash('artikel', { kategori: q.kategori, q: el.querySelector('#q-artikel').value.trim() });
+        location.hash = U.hash('artikel', { kategori: q.kategori, kontributor: q.kontributor, q: el.querySelector('#q-artikel').value.trim() });
       };
     });
   }

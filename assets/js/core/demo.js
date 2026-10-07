@@ -32,13 +32,33 @@ var Demo = (function () {
     });
   }
 
+  function namaKatVideo(d) {
+    return function (v) {
+      var k = (d.kategoriVideo || []).filter(function (x) { return x.slug === v.kategori; })[0];
+      return Object.assign({}, v, { kategori_nama: k ? k.nama : '' });
+    };
+  }
+
   function tunda(v) { return new Promise(function (res) { setTimeout(function () { res(v); }, 120); }); }
   function ringkas(a) { var o = Object.assign({}, a); delete o.konten; return o; }
+
+  /** Sama dengan backend: artikel 30 hari terakhir disusun bergiliran antar penulis. */
+  function ratakan(list) {
+    var grup = {}, urutan = [], out = [], masih = true;
+    list.forEach(function (a) {
+      var k = a.kontributor ? 'k:' + a.kontributor.slug : 'p:' + a.penulis;
+      if (!grup[k]) { grup[k] = []; urutan.push(k); }
+      grup[k].push(a);
+    });
+    while (masih) { masih = false; urutan.forEach(function (k) { if (grup[k].length) { out.push(grup[k].shift()); masih = true; } }); }
+    return out;
+  }
 
   var GET = {
     bootstrap: function (d) {
       return { situs: d.situs, tautan: d.tautan, kategori: d.kategori, sematan: d.sematan,
-        modul: ['situs', 'artikel', 'kontributor', 'kajian', 'donasi'], fitur: { pendaftaranKontributor: true }, feed: '' };
+        modul: ['situs', 'artikel', 'kontributor', 'kajian', 'video', 'donasi'], fitur: { pendaftaranKontributor: true }, feed: '',
+        kontributor: GET.kontributor(d), kategoriVideo: d.kategoriVideo };
     },
     beranda: function (d) {
       var batas = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
@@ -46,21 +66,23 @@ var Demo = (function () {
         bidang: d.bidang,
         artikel: {
           pengumuman: d.artikel.filter(function (a) { return a.kategori === 'pengumuman'; }).slice(0, 3).map(ringkas),
-          terbaru: d.artikel.filter(function (a) { return a.kategori !== 'pengumuman'; }).slice(0, 6).map(ringkas)
+          terbaru: ratakan(d.artikel.filter(function (a) { return a.kategori !== 'pengumuman'; })).slice(0, 6).map(ringkas)
         },
         kajian: d.kajian.filter(function (k) { return k.tanggal_berikut <= batas; }).slice(0, 3),
-        kontributor: GET.kontributor(d)
+        kontributor: GET.kontributor(d),
+        video: d.video.slice(0, 4).map(namaKatVideo(d))
       };
     },
     artikel: function (d, p) {
       var q = String(p.q || '').toLowerCase(), hal = Number(p.halaman) || 1, per = 12;
       var list = d.artikel.filter(function (a) {
         return (!p.kategori || a.kategori === p.kategori) &&
-          (!p.kontributor || (a.kontributor && a.kontributor.slug === p.kontributor)) &&
+          (!p.kontributor || (p.kontributor === 'yayasan' ? !a.kontributor : (a.kontributor && a.kontributor.slug === p.kontributor))) &&
           (!q || (a.judul + ' ' + a.ringkasan).toLowerCase().indexOf(q) >= 0);
       });
       var sematan = (!p.kategori && !q && hal === 1) ? list.filter(function (a) { return a.disematkan; }) : [];
       list = list.filter(function (a) { return sematan.indexOf(a) < 0; });
+      if (!p.kontributor) list = ratakan(list);
       return { items: list.slice((hal - 1) * per, hal * per).map(ringkas), disematkan: sematan.map(ringkas), total: list.length,
         halaman: hal, jumlahHalaman: Math.max(1, Math.ceil(list.length / per)) };
     },
@@ -89,6 +111,20 @@ var Demo = (function () {
       return o;
     },
     kajian: function (d) { return d.kajian; },
+    video: function (d, p) {
+      var q = String(p.q || '').toLowerCase();
+      var list = d.video.filter(function (v) {
+        return (!p.kategori || v.kategori === p.kategori) && (!q || (v.judul + ' ' + v.pemateri + ' ' + v.kanal).toLowerCase().indexOf(q) >= 0);
+      }).map(namaKatVideo(d));
+      return { items: list, total: list.length, halaman: 1, jumlahHalaman: 1 };
+    },
+    video_detail: function (d, p) {
+      var v = d.video.filter(function (x) { return x.id === p.id; })[0];
+      if (!v) throw new Error('Video tidak ditemukan.');
+      var o = namaKatVideo(d)(v);
+      o.terkait = d.video.filter(function (x) { return x !== v && x.kategori === v.kategori; }).map(namaKatVideo(d));
+      return o;
+    },
     donasi: function (d) { return { program: d.program, rekening: d.rekening, kontak: d.kontak }; },
     profil: function (d) { return { pengurus: d.pengurus, bidang: d.bidang }; }
   };

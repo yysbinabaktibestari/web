@@ -71,7 +71,7 @@
           '<form id="form-lokasi" novalidate style="display:flex;flex-direction:column;gap:14px">' +
             '<div class="medan"><label for="wa-kajian">Nomor WhatsApp <span class="wajib">*</span></label>' +
             '<input id="wa-kajian" type="tel" inputmode="tel" autocomplete="tel" required placeholder="08xx" value="' + esc(waTersimpan) + '"></div>' +
-            '<p class="catatan">Nomor dan perkiraan wilayah Anda akan dicatat yayasan untuk info kajian dan kegiatan. Tidak bersedia? Cari jadwal secara manual di bawah.</p>' +
+            '<p class="catatan">Nomor dan perkiraan wilayah Anda akan dicatat yayasan untuk info kajian dan kegiatan.</p>' +
             (pesan ? '<p class="galat" role="alert" style="margin:0">' + esc(pesan) + '</p>' : '') +
             '<button class="btn btn-utama" type="submit"' + (status === 'proses' ? ' disabled' : '') + '>' + U.ikon('target', 18) +
               (status === 'proses' ? 'Mencari lokasi…' : 'Setuju &amp; Gunakan Lokasi Saya') + '</button>' +
@@ -131,18 +131,16 @@
         var list = tersaring();
         el.querySelector('#daftar-kajian').innerHTML = list.length
           ? list.map(function (k, i) { return item(k, st.pos && i === 0 && k._jarak != null); }).join('')
-          : '<p class="kartu kosong">Tidak ada jadwal yang cocok.</p>';
+          : '<p class="kartu kosong">' + (semua.length ? 'Tidak ada jadwal yang cocok.' : 'Belum ada jadwal kajian.') + '</p>';
         perbaruiPeta(list);
       }
 
       function perbaruiPeta(list) {
         var wadahPeta = el.querySelector('#peta');
         var titik = list.filter(function (k) { return k.lat && k.lng; });
-        if (!titik.length && !st.pos) {
-          wadahPeta.className = 'arsir'; wadahPeta.textContent = 'Peta muncul setelah koordinat lokasi kajian diisi admin.';
-          if (st.peta) { st.peta.remove(); st.peta = null; }
-          return;
-        }
+        var aside = wadahPeta.parentNode;
+        aside.hidden = !titik.length;
+        if (!titik.length) { if (st.peta) { st.peta.remove(); st.peta = null; } return; }
         U.muatCss(LEAFLET + 'leaflet.css');
         (window.L ? Promise.resolve() : U.muatSkrip(LEAFLET + 'leaflet.js')).then(function () {
           if (!document.body.contains(wadahPeta)) return;
@@ -191,6 +189,7 @@
       urutan: 20,
       render: function (d) {
         var list = d.kajian || [];
+        if (!list.length) return '';
         return '<div class="wadah" style="padding-bottom:72px"><section class="panel-kajian" aria-labelledby="h-kajian">' +
           '<div class="teks"><h2 id="h-kajian">Kajian Pekan Ini</h2><p>Lihat jadwal lengkap dan temukan lokasi kajian terdekat dari posisi Anda.</p>' +
           '<a class="btn btn-emas" href="#/kajian" style="align-self:flex-start;margin-top:8px">' + U.ikon('pin', 18) + 'Cari Kajian Terdekat</a></div>' +

@@ -1,21 +1,21 @@
 /**
  * TEMPLATE MODUL WEBSITE
  * ------------------------------------------------------------------
- * 1. Salin ke assets/js/modules/video.js (nama file = id).
- * 2. Tambahkan 'video' ke KONFIG.MODUL di assets/js/config.js.
+ * 1. Salin ke assets/js/modules/galeri.js (nama file = id).
+ * 2. Tambahkan 'galeri' ke KONFIG.MODUL di assets/js/config.js.
  * 3. Naikkan KONFIG.VERSI agar browser memuat file baru.
  */
 App.modul({
-  id: 'video',
-  butuh: 'video',                                  // modul backend yang dipakai (disembunyikan bila backend mematikannya)
-  nav: { label: 'Video', href: '#/video' },        // hapus bila tidak perlu muncul di menu
+  id: 'galeri',
+  butuh: 'galeri',                                  // modul backend yang dipakai (disembunyikan bila backend mematikannya)
+  nav: { label: 'Galeri', href: '#/galeri' },        // hapus bila tidak perlu muncul di menu
 
   rute: [{
-    pola: 'video',                                 // #/video ; pakai ':param' untuk bagian dinamis, mis. 'video/:id'
+    pola: 'galeri',                                 // #/galeri ; pakai ':param' untuk bagian dinamis, mis. 'video/:id'
     render: function (el, params, query) {
-      App.judul('Video');
-      return API.get('video', { kategori: query.kategori }).then(function (list) {
-        el.innerHTML = '<div class="wadah"><header class="kepala-halaman"><h1>Video</h1></header>' +
+      App.judul('Galeri');
+      return API.get('galeri', { kategori: query.kategori }).then(function (list) {
+        el.innerHTML = '<div class="wadah"><header class="kepala-halaman"><h1>Galeri</h1></header>' +
           '<div class="grid" style="padding-bottom:80px">' + list.map(function (v) {
             var id = (String(v.url).match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/) || [])[1];
             return '<div class="kartu" style="padding:14px;display:flex;flex-direction:column;gap:10px">' +
@@ -30,8 +30,8 @@ App.modul({
   beranda: [{
     urutan: 35,
     render: function (d) {
-      if (!(d.video || []).length) return '';
-      return '<section class="wadah" style="padding-bottom:72px"><div class="kepala-bagian"><h2>Video Terbaru</h2><a href="#/video">Semua video →</a></div></section>';
+      if (!(d.galeri || []).length) return '';
+      return '<section class="wadah" style="padding-bottom:72px"><div class="kepala-bagian"><h2>Video Terbaru</h2><a href="#/galeri">Semua video →</a></div></section>';
     }
   }]
 });

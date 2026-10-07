@@ -1,7 +1,7 @@
 /**
  * TEMPLATE MODUL BACKEND
  * ------------------------------------------------------------------
- * 1. Salin file ini ke Apps Script sebagai mis. "30_Video.gs".
+ * 1. Salin file ini ke Apps Script sebagai mis. "30_Galeri.gs".
  * 2. Ganti "video" dan definisinya sesuai kebutuhan.
  * 3. Jalankan setup() → sheet & kolom dibuat otomatis, menu muncul di panel admin.
  * 4. Terapkan › Kelola deployment › Edit › Versi baru (URL web app tetap sama).
@@ -10,14 +10,14 @@
  */
 var MODUL = MODUL || {};
 
-MODUL.video = {
-  judul: 'Video',        // judul grup di panel admin
+MODUL.galeri = {
+  judul: 'Galeri',        // judul grup di panel admin
   urutan: 50,            // urutan di panel admin
 
   sheets: [
     {
-      nama: 'Video',
-      judul: 'Daftar video',
+      nama: 'Galeri',
+      judul: 'Daftar video galeri',
       keterangan: 'Video YouTube per kategori.',
       urut: { k: 'urutan', arah: 'asc' },
       kolom: [
@@ -32,10 +32,10 @@ MODUL.video = {
     }
   ],
 
-  // GET publik: ?action=video  (hasil di-cache otomatis, privat dibuang)
+  // GET publik: ?action=galeri  (hasil di-cache otomatis, privat dibuang)
   publik: {
-    video: function (p) {
-      var list = publikSaja_('Video', tampilUrut_(bacaTabel('Video')));
+    galeri: function (p) {
+      var list = publikSaja_('Galeri', tampilUrut_(bacaTabel_('Galeri')));
       return p.kategori ? list.filter(function (v) { return v.kategori === p.kategori; }) : list;
     }
   },
@@ -44,11 +44,11 @@ MODUL.video = {
   // publikPost: { kirim_sesuatu: function (body) { tambahBaris_('NamaSheet', {...}); return { pesan: 'OK' }; } },
 
   // Data tambahan untuk beranda (?action=beranda) dan bootstrap (dimuat sekali).
-  beranda: function () { return { video: MODUL.video.publik.video({}).slice(0, 4) }; },
+  beranda: function () { return { galeri: MODUL.galeri.publik.galeri({}).slice(0, 4) }; },
   // bootstrap: function () { return { ... }; },
 
   // Tombol khusus di panel admin.
-  // alat: [{ id: 'nama', sheet: 'Video', label: 'Label tombol', perluPilih: true,
+  // alat: [{ id: 'nama', sheet: 'Galeri', label: 'Label tombol', perluPilih: true,
   //          input: [{ k: 'x', l: 'Isian', t: 'text' }], run: function (ids, input) { return { pesan: 'Selesai' }; } }],
 
   // Tugas latar per jam.

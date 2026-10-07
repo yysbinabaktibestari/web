@@ -100,7 +100,7 @@ var U = (function () {
   }
   function gambar(url, alt, label, kelas) {
     if (url) return '<div class="' + (kelas || '') + '"><img src="' + esc(url) + '" alt="' + esc(alt || '') + '" loading="lazy"></div>';
-    return '<div class="' + (kelas || '') + ' arsir" role="img" aria-label="' + esc(label || 'Gambar') + '">' + esc(label || '') + '</div>';
+    return '<div class="' + (kelas || '') + ' sampul-kosong" aria-hidden="true">' + ikon('buku', 40) + '</div>';
   }
   function avatar(nama, foto, kelas) {
     var inisial = String(nama || '?').replace(/^[^A-Za-z0-9À-ɏ]+/, '').replace(/^(ust\.?|ustadz|dr\.?|h\.)\s*/i, '').trim().charAt(0).toUpperCase() || '?';

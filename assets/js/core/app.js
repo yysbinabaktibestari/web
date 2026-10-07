@@ -59,13 +59,13 @@ var App = (function () {
   /* ---------------- Kerangka ---------------- */
 
   function kerangka() {
-    var s = data.situs, nama = s.nama_yayasan || 'Yayasan';
-    document.title = nama;
+    var s = data.situs, nama = s.nama_yayasan || '';
+    document.title = nama || 'Beranda';
     var meta = document.querySelector('meta[name=description]');
     if (meta && s.deskripsi) meta.setAttribute('content', s.deskripsi);
     if (data.feed) {
       var l = document.createElement('link');
-      l.rel = 'alternate'; l.type = 'application/rss+xml'; l.title = nama; l.href = data.feed;
+      l.rel = 'alternate'; l.type = 'application/rss+xml'; l.title = nama || 'RSS'; l.href = data.feed;
       document.head.appendChild(l);
     }
     $('logo').innerHTML = '<span class="logo-tanda">' + (s.logo ? '<img src="' + U.esc(s.logo) + '" alt="">' : '<span style="color:#fff">' + U.ikon('buku', 22) + '</span>') + '</span>' +
@@ -111,20 +111,20 @@ var App = (function () {
   }
 
   function footer(navs) {
-    var s = data.situs, nama = s.nama_yayasan || 'Yayasan';
+    var s = data.situs, nama = s.nama_yayasan || '';
     var kontak = [];
     if (s.telepon_wa && U.normalWa(s.telepon_wa)) kontak.push('<a href="https://wa.me/' + U.normalWa(s.telepon_wa) + '" target="_blank" rel="noopener">' + U.ikon('whatsapp', 16) + U.esc(s.telepon_wa) + '</a>');
     if (s.email) kontak.push('<a href="mailto:' + U.esc(s.email) + '">' + U.ikon('email', 16) + U.esc(s.email) + '</a>');
     var tautan = navs.map(function (m) { return '<a href="' + U.esc(m.nav.href) + '">' + U.esc(m.nav.label) + '</a>'; });
     if (data.feed) tautan.push('<a href="' + U.esc(data.feed) + '" target="_blank" rel="noopener">' + U.ikon('rss', 16) + 'RSS</a>');
     $('footer').innerHTML = '<div class="wadah">' +
-      '<div class="kiri"><span class="nama">' + U.esc(nama) + '</span>' +
+      '<div class="kiri">' + (nama ? '<span class="nama">' + U.esc(nama) + '</span>' : '') +
         (s.alamat ? '<span>' + U.esc(s.alamat) + '</span>' : '') +
         (s.sk_kemenkumham ? '<span>SK Kemenkumham: ' + U.esc(s.sk_kemenkumham) + '</span>' : '') +
         (kontak.length ? '<span style="display:flex;flex-wrap:wrap;gap:0 18px">' + kontak.join('') + '</span>' : '') +
       '</div>' +
       '<nav aria-label="Menu bawah">' + tautan.join('') + '</nav></div>' +
-      '<div class="wadah bawah">© ' + new Date().getFullYear() + ' ' + U.esc(nama) + '</div>';
+      '<div class="wadah bawah">© ' + new Date().getFullYear() + (nama ? ' ' + U.esc(nama) : '') + '</div>';
   }
 
   /* ---------------- Router ---------------- */
@@ -185,12 +185,12 @@ var App = (function () {
   /* ---------------- Helper tampilan ---------------- */
 
   function judul(t) {
-    var nama = data.situs.nama_yayasan || 'Yayasan';
-    document.title = t ? t + ' · ' + nama : nama;
+    var nama = data.situs.nama_yayasan || '';
+    document.title = t ? t + (nama ? ' · ' + nama : '') : (nama || 'Beranda');
   }
   function muat() { return '<div class="muat" role="status" aria-label="Memuat"><span></span></div>'; }
   function galat(e) {
-    return '<div class="wadah kosong"><p class="galat" style="display:inline-block">' + U.esc((e && e.message) || 'Terjadi kesalahan.') +
+    return '<div class="wadah kosong"><p class="galat" style="display:inline-block"' + (e && e.teknis ? ' title="' + U.esc(e.teknis) + '"' : '') + '>' + U.esc((e && e.message) || 'Terjadi kesalahan.') +
       '</p><p><button class="btn btn-biru-garis btn-kecil" type="button" onclick="App.ulang()">Coba lagi</button></p></div>';
   }
   function ulang() {

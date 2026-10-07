@@ -6,7 +6,11 @@
  */
 var CONFIG = {
   // Alamat website di GitHub Pages (dipakai untuk tautan di RSS / JSON Feed)
-  SITE_URL: 'https://USERNAME.github.io/REPO/',
+  SITE_URL: 'https://yysbinabaktibestari.github.io/web/',
+
+  // Sumber pembaruan otomatis (menu Yayasan › Perbarui dari GitHub / tombol di panel admin)
+  GITHUB_REPO: 'yysbinabaktibestari/web',
+  GITHUB_CABANG: 'main',
 
   ZONA_WAKTU: 'Asia/Jakarta',
 
@@ -20,6 +24,15 @@ var CONFIG = {
   ARTIKEL_KONTRIBUTOR_STATUS_DEFAULT: 'Tayang',
   // Formulir "Jadi Kontributor" di website
   PENDAFTARAN_KONTRIBUTOR_TERBUKA: true,
+
+  // Hapus nomor urut di depan nama file kontributor, mis. "01. Judul" / "3 - Judul" / "(2) Judul"
+  BERSIHKAN_NOMOR_JUDUL: true,
+
+  // ---- Urutan artikel ----
+  // Pemerataan: artikel dalam N hari terakhir disusun bergiliran antar kontributor/penulis
+  // agar daftar tidak didominasi satu penulis. Artikel lebih lama tetap urut tanggal.
+  PEMERATAAN_ARTIKEL: true,
+  PEMERATAAN_HARI: 30,
 
   // ---- Artikel ----
   // Slug kategori yang tampil sebagai "Info Yayasan" di beranda
@@ -43,7 +56,7 @@ var CONFIG = {
 var STATUS = { DRAF: 'Draf', TAYANG: 'Tayang', TIDAK: 'Tidak tayang' };
 
 /** Baca / tulis Script Properties. */
-function prop(kunci, nilai) {
+function prop_(kunci, nilai) {
   var p = PropertiesService.getScriptProperties();
   if (nilai === undefined) return p.getProperty(kunci);
   if (nilai === null) { p.deleteProperty(kunci); return null; }

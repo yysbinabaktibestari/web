@@ -14,6 +14,7 @@ MODUL.situs = {
       judul: 'Pengaturan situs',
       keterangan: 'Teks & info yayasan. Kunci berawalan "_" tidak ditampilkan ke publik.',
       kunci: 'kunci',
+      lengkapiIsiAwal: true,
       urut: { k: 'kunci', arah: 'asc' },
       kolom: [
         { k: 'kunci', l: 'Kunci', t: 'text', wajib: true },
@@ -21,23 +22,23 @@ MODUL.situs = {
         { k: 'keterangan', l: 'Keterangan', t: 'text', daftar: false }
       ],
       isiAwal: [
-        { kunci: 'nama_yayasan', nilai: '[Nama Yayasan]', keterangan: 'Nama resmi yayasan' },
-        { kunci: 'tagline', nilai: 'Yayasan Pendidikan & Sosial', keterangan: 'Label kecil di atas judul beranda' },
-        { kunci: 'judul_hero', nilai: '[Kalimat misi utama yayasan]', keterangan: 'Judul besar di beranda' },
-        { kunci: 'deskripsi', nilai: '[Ringkasan 2–3 kalimat tentang yayasan.]', keterangan: 'Paragraf di bawah judul beranda & deskripsi SEO' },
+        { kunci: 'nama_yayasan', nilai: '', keterangan: 'Nama resmi yayasan' },
+        { kunci: 'tagline', nilai: '', keterangan: 'Label kecil di atas judul beranda' },
+        { kunci: 'judul_hero', nilai: '', keterangan: 'Judul besar di beranda' },
+        { kunci: 'deskripsi', nilai: '', keterangan: 'Paragraf di bawah judul beranda & deskripsi SEO' },
         { kunci: 'logo', nilai: '', keterangan: 'URL gambar logo (opsional)' },
         { kunci: 'foto_hero', nilai: '', keterangan: 'URL foto kegiatan di beranda (opsional)' },
-        { kunci: 'sejarah', nilai: '[Sejarah singkat yayasan.]', keterangan: 'Halaman Tentang' },
-        { kunci: 'visi', nilai: '[Rumusan visi.]', keterangan: 'Halaman Tentang' },
-        { kunci: 'misi', nilai: '[Misi pertama]\n[Misi kedua]\n[Misi ketiga]', keterangan: 'Satu misi per baris' },
-        { kunci: 'akta', nilai: '[Nomor & tanggal akta]', keterangan: 'Legalitas' },
-        { kunci: 'sk_kemenkumham', nilai: '[Nomor SK]', keterangan: 'Legalitas' },
-        { kunci: 'alamat', nilai: '[Alamat sekretariat]', keterangan: 'Footer & kontak' },
+        { kunci: 'sejarah', nilai: '', keterangan: 'Halaman Tentang' },
+        { kunci: 'visi', nilai: '', keterangan: 'Halaman Tentang' },
+        { kunci: 'misi', nilai: '', keterangan: 'Satu misi per baris' },
+        { kunci: 'akta', nilai: '', keterangan: 'Legalitas' },
+        { kunci: 'sk_kemenkumham', nilai: '', keterangan: 'Legalitas' },
+        { kunci: 'alamat', nilai: '', keterangan: 'Footer & kontak' },
         { kunci: 'telepon_wa', nilai: '', keterangan: 'Nomor WA kontak umum, mis. 0812xxxx' },
         { kunci: 'email', nilai: '', keterangan: 'Email yayasan' },
         { kunci: 'maps_embed', nilai: '', keterangan: 'URL embed Google Maps (Bagikan › Sematkan peta › ambil src)' },
         { kunci: 'qris', nilai: '', keterangan: 'URL gambar QRIS donasi (opsional)' },
-        { kunci: 'ajakan_donasi', nilai: '[Ajakan berdonasi dan ke mana dana disalurkan.]', keterangan: 'Halaman Donasi' }
+        { kunci: 'ajakan_donasi', nilai: '', keterangan: 'Halaman Donasi' }
       ]
     },
     {
@@ -51,11 +52,6 @@ MODUL.situs = {
         { k: 'ikon', l: 'Ikon', t: 'select', opsi: ['instagram', 'youtube', 'whatsapp', 'facebook', 'tiktok', 'telegram', 'x', 'web', 'tautan'], bawaan: 'tautan' },
         { k: 'keterangan', l: 'Keterangan', t: 'text' },
         { k: 'tampil', l: 'Tampil', t: 'bool', bawaan: true }
-      ],
-      isiAwal: [
-        { urutan: 1, label: 'Instagram', url: 'https://instagram.com/', ikon: 'instagram', keterangan: '[@akun]', tampil: true },
-        { urutan: 2, label: 'YouTube', url: 'https://youtube.com/', ikon: 'youtube', keterangan: '[nama kanal]', tampil: true },
-        { urutan: 3, label: 'WhatsApp', url: 'https://wa.me/', ikon: 'whatsapp', keterangan: 'Hubungi kami', tampil: true }
       ]
     },
     {
@@ -68,11 +64,6 @@ MODUL.situs = {
         { k: 'nama', l: 'Nama', t: 'text', wajib: true },
         { k: 'foto', l: 'Foto (URL)', t: 'image' },
         { k: 'tampil', l: 'Tampil', t: 'bool', bawaan: true }
-      ],
-      isiAwal: [
-        { urutan: 1, jabatan: 'Ketua', nama: '[Nama ketua]', tampil: true },
-        { urutan: 2, jabatan: 'Sekretaris', nama: '[Nama sekretaris]', tampil: true },
-        { urutan: 3, jabatan: 'Bendahara', nama: '[Nama bendahara]', tampil: true }
       ]
     },
     {
@@ -86,10 +77,6 @@ MODUL.situs = {
         { k: 'ikon', l: 'Ikon', t: 'select', opsi: ['pendidikan', 'sosial', 'dakwah', 'kesehatan', 'ekonomi', 'lainnya'], bawaan: 'lainnya' },
         { k: 'tautan', l: 'Tautan (opsional)', t: 'text', bantuan: 'mis. #/artikel?kategori=pendidikan' },
         { k: 'tampil', l: 'Tampil', t: 'bool', bawaan: true }
-      ],
-      isiAwal: [
-        { urutan: 1, judul: 'Pendidikan', deskripsi: '[Program pendidikan yang dijalankan yayasan.]', ikon: 'pendidikan', tampil: true },
-        { urutan: 2, judul: 'Sosial', deskripsi: '[Program sosial dan penerima manfaatnya.]', ikon: 'sosial', tampil: true }
       ]
     }
   ],
@@ -103,8 +90,8 @@ MODUL.situs = {
 
     profil: function () {
       return {
-        pengurus: tampilUrut_(bacaTabel('Pengurus')),
-        bidang: tampilUrut_(bacaTabel('Bidang'))
+        pengurus: tampilUrut_(bacaTabel_('Pengurus')),
+        bidang: tampilUrut_(bacaTabel_('Bidang'))
       };
     },
 
@@ -117,7 +104,7 @@ MODUL.situs = {
           nama: namaSitus_(),
           situs: CONFIG.SITE_URL,
           versi_api: 1,
-          modul: daftarModul().map(function (m) { return m.id; }),
+          modul: daftarModul_().map(function (m) { return m.id; }),
           endpoint: {
             feed_rss: base + '?action=feed&format=rss',
             feed_json: base + '?action=feed&format=json',
@@ -136,22 +123,22 @@ MODUL.situs = {
   bootstrap: function () {
     return {
       situs: pengaturan_(),
-      tautan: tampilUrut_(bacaTabel('Tautan')),
-      modul: daftarModul().map(function (m) { return m.id; }),
+      tautan: tampilUrut_(bacaTabel_('Tautan')),
+      modul: daftarModul_().map(function (m) { return m.id; }),
       fitur: { pendaftaranKontributor: !!CONFIG.PENDAFTARAN_KONTRIBUTOR_TERBUKA },
       feed: ScriptApp.getService().getUrl() + '?action=feed&format=rss'
     };
   },
 
   beranda: function () {
-    return { bidang: tampilUrut_(bacaTabel('Bidang')) };
+    return { bidang: tampilUrut_(bacaTabel_('Bidang')) };
   }
 };
 
 /** Gabungkan hasil hook (bootstrap/beranda) dari semua modul. */
 function gabungHook_(nama) {
   var out = {};
-  daftarModul().forEach(function (m) {
+  daftarModul_().forEach(function (m) {
     if (typeof m[nama] !== 'function') return;
     try {
       var r = m[nama]() || {};

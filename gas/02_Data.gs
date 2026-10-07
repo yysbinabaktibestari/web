@@ -10,7 +10,7 @@
  */
 
 function buku_() {
-  var id = prop('SPREADSHEET_ID');
+  var id = prop_('SPREADSHEET_ID');
   if (id) return SpreadsheetApp.openById(id);
   var aktif = SpreadsheetApp.getActive();
   if (!aktif) throw new Error('Spreadsheet belum terhubung. Jalankan setup() dari editor Apps Script.');
@@ -62,8 +62,8 @@ function keSel_(v, t) {
 }
 
 /** Baca seluruh sheet sebagai array objek. */
-function bacaTabel(nama) {
-  var def = sheetDef(nama);
+function bacaTabel_(nama) {
+  var def = sheetDef_(nama);
   var tipe = tipeKolom_(def);
   var v = sheet_(nama).getDataRange().getValues();
   var header = v.shift() || [];
@@ -79,7 +79,7 @@ function bacaTabel(nama) {
 
 /** Hapus kolom privat sebelum dikirim ke publik. */
 function publikSaja_(nama, rows) {
-  var privat = sheetDef(nama).kolom.filter(function (c) { return c.privat; }).map(function (c) { return c.k; });
+  var privat = sheetDef_(nama).kolom.filter(function (c) { return c.privat; }).map(function (c) { return c.k; });
   if (!privat.length) return rows;
   return rows.map(function (r) {
     var o = {};
@@ -90,7 +90,7 @@ function publikSaja_(nama, rows) {
 
 /** Tambah satu baris di akhir sheet (cepat, tanpa memuat seluruh sheet). */
 function tambahBaris_(nama, obj) {
-  var def = sheetDef(nama);
+  var def = sheetDef_(nama);
   var tipe = tipeKolom_(def);
   var sh = sheet_(nama);
   var header = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
@@ -104,9 +104,9 @@ function tambahBaris_(nama, obj) {
  * Tabel: muat sekali, ubah di memori, tulis sekali.
  * ============================================================== */
 
-function Tabel(nama) {
+function Tabel_(nama) {
   this.nama = nama;
-  this.def = sheetDef(nama);
+  this.def = sheetDef_(nama);
   this.kunci = this.def.kunci || 'id';
   this.tipe = tipeKolom_(this.def);
   this.sh = sheet_(nama);
@@ -124,25 +124,25 @@ function Tabel(nama) {
   }
 }
 
-Tabel.prototype._obj = function (r) {
+Tabel_.prototype._obj = function (r) {
   var o = {}, self = this;
   this.header.forEach(function (h, j) { if (h) o[h] = normalNilai_(r[j], self.tipe[h]); });
   return o;
 };
 
-Tabel.prototype.objek = function () {
+Tabel_.prototype.objek = function () {
   var self = this;
   return this.data.filter(function (r) { return String(r[self.ik]) !== ''; })
     .map(function (r) { return self._obj(r); });
 };
 
-Tabel.prototype.ambil = function (key) {
+Tabel_.prototype.ambil = function (key) {
   var i = this.indeks[String(key)];
   return i === undefined ? null : this._obj(this.data[i]);
 };
 
 /** Tambah atau perbarui berdasarkan kolom kunci. Mengembalikan kunci. */
-Tabel.prototype.set = function (obj) {
+Tabel_.prototype.set = function (obj) {
   var self = this;
   var key = obj[this.kunci];
   if (key === undefined || key === null || key === '') { key = id_(); obj[this.kunci] = key; }
@@ -162,7 +162,7 @@ Tabel.prototype.set = function (obj) {
   return key;
 };
 
-Tabel.prototype.simpan = function () {
+Tabel_.prototype.simpan = function () {
   var self = this, w = this.header.length;
   var diubah = Object.keys(this.ubah).map(Number).filter(function (i) { return i < self.panjangAwal; });
   if (diubah.length > 25) {
@@ -179,7 +179,7 @@ Tabel.prototype.simpan = function () {
 };
 
 /** Ganti nilai kunci sebuah baris (mis. slug kategori diubah). */
-Tabel.prototype.gantiKunci = function (lama, baru) {
+Tabel_.prototype.gantiKunci = function (lama, baru) {
   var i = this.indeks[String(lama)];
   if (i === undefined) return;
   if (this.indeks[String(baru)] !== undefined) throw new Error('"' + baru + '" sudah dipakai.');
@@ -191,7 +191,7 @@ Tabel.prototype.gantiKunci = function (lama, baru) {
 
 /** Hapus baris berdasarkan daftar kunci. Mengembalikan jumlah terhapus. */
 function hapusBaris_(nama, kunciList) {
-  var def = sheetDef(nama);
+  var def = sheetDef_(nama);
   var sh = sheet_(nama);
   var v = sh.getDataRange().getValues();
   var ik = v[0].indexOf(def.kunci || 'id');
@@ -215,6 +215,15 @@ function pastikanSheet_(def) {
   sh.getRange(1, 1, 1, header.length).setValues([header])
     .setFontWeight('bold').setBackground('#18548C').setFontColor('#FFFFFF');
   sh.setFrozenRows(1);
+  if (!baru && def.lengkapiIsiAwal && def.isiAwal && def.kunci) {
+    var ik = header.indexOf(def.kunci);
+    var adaKunci = sh.getLastRow() > 1 ? sh.getRange(2, ik + 1, sh.getLastRow() - 1, 1).getValues().map(function (r) { return String(r[0]); }) : [];
+    var tipe0 = tipeKolom_(def);
+    var kurang = def.isiAwal.filter(function (o) { return adaKunci.indexOf(String(o[def.kunci])) < 0; }).map(function (o) {
+      return header.map(function (h) { return o.hasOwnProperty(h) ? keSel_(o[h], tipe0[h]) : ''; });
+    });
+    if (kurang.length) sh.getRange(sh.getLastRow() + 1, 1, kurang.length, header.length).setValues(kurang);
+  }
   if (baru && def.isiAwal && def.isiAwal.length) {
     var tipe = tipeKolom_(def);
     var rows = def.isiAwal.map(function (o) {
@@ -240,19 +249,19 @@ var NAMA_FOLDER = {
 
 /** Ambil folder kerja; dibuat otomatis bila belum ada. */
 function folder_(kunci) {
-  var id = prop(kunci);
+  var id = prop_(kunci);
   if (id) { try { return DriveApp.getFolderById(id); } catch (x) { /* dibuat ulang */ } }
   var induk;
   if (kunci === 'FOLDER_INDUK') {
     induk = DriveApp.createFolder(NAMA_FOLDER.FOLDER_INDUK);
-    prop(kunci, induk.getId());
+    prop_(kunci, induk.getId());
     return induk;
   }
   var f = folder_('FOLDER_INDUK').createFolder(NAMA_FOLDER[kunci] || kunci);
   if (kunci === 'FOLDER_GAMBAR') {
     try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (x) { /* domain membatasi */ }
   }
-  prop(kunci, f.getId());
+  prop_(kunci, f.getId());
   return f;
 }
 

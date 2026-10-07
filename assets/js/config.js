@@ -9,11 +9,11 @@ window.KONFIG = {
 
   // Modul aktif, berurutan. Setiap id = file assets/js/modules/<id>.js
   // Tambah modul baru: buat file-nya, lalu tulis id-nya di sini.
-  MODUL: ['beranda', 'artikel', 'kajian', 'kontributor', 'profil', 'donasi'],
+  MODUL: ['beranda', 'artikel', 'kajian', 'video', 'kontributor', 'profil', 'donasi'],
 
   // Lama data disimpan di browser (menit) agar perpindahan halaman cepat.
   CACHE_MENIT: 5,
 
   // Naikkan setiap kali file JS/CSS diubah agar browser memuat versi baru.
-  VERSI: '1.0.0'
+  VERSI: '1.2.0'
 };

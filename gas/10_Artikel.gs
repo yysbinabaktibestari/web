@@ -19,18 +19,30 @@ MODUL.artikel = {
       judul: 'Artikel',
       keterangan: 'Artikel internal ditulis di Google Doc (tombol "Buat Google Doc"). Artikel kontributor terisi otomatis saat sinkron.',
       urut: { k: 'tanggal', arah: 'desc' },
+      filterCepat: [
+        { label: 'Belum dikurasi', k: 'status_kurasi', v: 'Belum dikurasi' },
+        { label: 'Tayang', k: 'status', v: 'Tayang' },
+        { label: 'Draf', k: 'status', v: 'Draf' },
+        { label: 'Tidak tayang', k: 'status', v: 'Tidak tayang' }
+      ],
       kolom: [
         { k: 'id', t: 'id' },
-        { k: 'judul', l: 'Judul', t: 'text', wajib: true },
+        { k: 'judul', l: 'Judul sumber', t: 'text', wajib: true, bantuan: 'Untuk artikel kontributor, terisi dari nama file / feed dan diperbarui saat sinkron' },
+        { k: 'judul_kurasi', l: 'Judul tayang (kurasi)', t: 'text', bantuan: 'Isi untuk mengganti judul yang tampil, mis. bila nama file kontributor memuat nomor atau kode. Tidak tertimpa sinkron.' },
         { k: 'slug', l: 'Slug URL', t: 'text', daftar: false, bantuan: 'Kosongkan untuk dibuat otomatis dari judul' },
         { k: 'kategori', l: 'Kategori', t: 'ref', ref: { sheet: 'Kategori', nilai: 'slug', label: 'nama' } },
         { k: 'status', l: 'Status', t: 'select', opsi: ['Draf', 'Tayang', 'Tidak tayang'], bawaan: 'Draf' },
-        { k: 'sumber', l: 'Sumber', t: 'select', opsi: ['internal', 'folder', 'feed'], bawaan: 'internal' },
+        { k: 'status_kurasi', l: 'Kurasi', t: 'select', opsi: ['Belum dikurasi', 'Dikurasi'],
+          bantuan: 'Artikel kontributor baru otomatis "Belum dikurasi" (tetap tayang sesuai status).' },
+        { k: 'sumber', l: 'Sumber', t: 'select', opsi: ['internal', 'folder', 'feed'], bawaan: 'internal', daftar: false },
         { k: 'doc_url', l: 'Google Doc', t: 'url', daftar: false },
         { k: 'url_asli', l: 'URL asli (situs kontributor)', t: 'url', daftar: false },
         { k: 'kontributor', l: 'Kontributor', t: 'ref', ref: { sheet: 'Kontributor', nilai: 'slug', label: 'nama' } },
-        { k: 'penulis', l: 'Penulis', t: 'text' },
-        { k: 'ringkasan', l: 'Ringkasan', t: 'textarea', daftar: false, bantuan: 'Kosongkan untuk diambil dari paragraf pertama' },
+        { k: 'penulis', l: 'Penulis', t: 'text', daftar: false },
+        { k: 'ringkasan', l: 'Ringkasan sumber', t: 'textarea', daftar: false, bantuan: 'Kosongkan untuk diambil dari paragraf pertama' },
+        { k: 'ringkasan_kurasi', l: 'Ringkasan tayang (kurasi)', t: 'textarea', daftar: false, bantuan: 'Opsional, menggantikan ringkasan sumber. Tidak tertimpa sinkron.' },
+        { k: 'catatan_editor', l: 'Catatan editor', t: 'textarea', daftar: false, privat: true },
+        { k: 'editor', l: 'Dikurasi oleh', t: 'text', ro: true, daftar: false, privat: true },
         { k: 'sampul', l: 'Gambar sampul (URL)', t: 'image', daftar: false, bantuan: 'Kosongkan untuk memakai gambar pertama di Doc' },
         { k: 'tanggal', l: 'Tanggal tayang', t: 'datetime', bantuan: 'Tanggal di masa depan = terjadwal' },
         { k: 'diperbarui', l: 'Diperbarui', t: 'datetime', ro: true, daftar: false },
@@ -68,7 +80,8 @@ MODUL.artikel = {
       var hal = Math.max(Number(p.halaman) || 1, 1);
       var list = semua.filter(function (a) {
         if (kat && a.kategori !== kat) return false;
-        if (kon && (!a.kontributor || a.kontributor.slug !== kon)) return false;
+        if (kon === 'yayasan' && a.kontributor) return false;
+        if (kon && kon !== 'yayasan' && (!a.kontributor || a.kontributor.slug !== kon)) return false;
         if (q && (a.judul + ' ' + a.ringkasan + ' ' + a.penulis).toLowerCase().indexOf(q) < 0) return false;
         return true;
       });
@@ -77,6 +90,7 @@ MODUL.artikel = {
         disematkan = list.filter(sedangDisematkan_);
         list = list.filter(function (a) { return !sedangDisematkan_(a); });
       }
+      if (!kon) list = ratakan_(list);
       return {
         items: list.slice((hal - 1) * per, hal * per).map(publikArtikel_),
         disematkan: disematkan.map(publikArtikel_),
@@ -116,13 +130,22 @@ MODUL.artikel = {
       artikel: {
         disematkan: semua.filter(sedangDisematkan_).slice(0, 1).map(publikArtikel_),
         pengumuman: semua.filter(function (a) { return a.kategori === pg; }).slice(0, 3).map(publikArtikel_),
-        terbaru: semua.filter(function (a) { return a.kategori !== pg; }).slice(0, 6).map(publikArtikel_)
+        terbaru: ratakan_(semua.filter(function (a) { return a.kategori !== pg; })).slice(0, 6).map(publikArtikel_)
       }
     };
   },
 
   sebelumSimpan: function (nama, obj, lama) {
     if (nama !== 'Artikel') return;
+    // Jejak kurasi: siapa yang terakhir mengubah isian kurasi
+    var kolomKurasi = ['judul_kurasi', 'ringkasan_kurasi', 'catatan_editor', 'status_kurasi'];
+    var berubah = kolomKurasi.some(function (k) {
+      return obj.hasOwnProperty(k) && String(obj[k] || '') !== String((lama && lama[k]) || '');
+    });
+    if (berubah && ADMIN_AKTIF) {
+      obj.editor = ADMIN_AKTIF.nama + ' · ' + fmt_(new Date(), 'yyyy-MM-dd HH:mm');
+      if ((obj.judul_kurasi || obj.ringkasan_kurasi) && !(obj.status_kurasi && obj.status_kurasi !== 'Belum dikurasi')) obj.status_kurasi = 'Dikurasi';
+    }
     if (!obj.sumber && !(lama && lama.sumber)) obj.sumber = 'internal';
     if (!obj.tanggal && !(lama && lama.tanggal)) obj.tanggal = new Date();
     var docUrl = obj.doc_url || (lama && lama.doc_url);
@@ -152,7 +175,7 @@ MODUL.artikel = {
         var file;
         if (CONFIG.TEMPLATE_DOC_ID) file = DriveApp.getFileById(CONFIG.TEMPLATE_DOC_ID).makeCopy(input.judul, folder);
         else { file = DriveApp.getFileById(DocumentApp.create(input.judul).getId()); file.moveTo(folder); }
-        var tb = new Tabel('Artikel');
+        var tb = new Tabel_('Artikel');
         tb.set({
           judul: input.judul, slug: slugUnik_(input.judul, tb), kategori: input.kategori || '',
           status: STATUS.DRAF, sumber: 'internal', doc_url: file.getUrl(), penulis: input.penulis || '',
@@ -160,6 +183,15 @@ MODUL.artikel = {
         });
         tb.simpan();
         return { pesan: 'Google Doc dibuat dengan status Draf. Tulis artikelnya, lalu ubah status ke Tayang.', url: file.getUrl(), labelUrl: 'Buka Google Doc' };
+      }
+    },
+    {
+      id: 'tandai_kurasi', sheet: 'Artikel', label: 'Tandai dikurasi', perluPilih: true,
+      run: function (ids) {
+        var tb = new Tabel_('Artikel'), jejak = (ADMIN_AKTIF ? ADMIN_AKTIF.nama + ' · ' : '') + fmt_(new Date(), 'yyyy-MM-dd HH:mm');
+        ids.forEach(function (k) { if (tb.ambil(k)) tb.set({ id: k, status_kurasi: 'Dikurasi', editor: jejak }); });
+        tb.simpan();
+        return { pesan: ids.length + ' artikel ditandai sudah dikurasi.' };
       }
     },
     {
@@ -174,7 +206,7 @@ MODUL.artikel = {
       id: 'sematkan', sheet: 'Artikel', label: 'Sematkan', perluPilih: true,
       input: [{ k: 'sampai', l: 'Sematkan sampai (kosong = tanpa batas)', t: 'date' }],
       run: function (ids, input) {
-        var tb = new Tabel('Artikel');
+        var tb = new Tabel_('Artikel');
         ids.forEach(function (k) { if (tb.ambil(k)) tb.set({ id: k, disematkan: true, sematkan_sampai: input.sampai || '' }); });
         tb.simpan();
         return { pesan: ids.length + ' artikel disematkan di atas daftar artikel.' };
@@ -187,7 +219,7 @@ MODUL.artikel = {
     {
       id: 'segarkan', sheet: 'Artikel', label: 'Segarkan isi dari Doc', perluPilih: true,
       run: function (ids) {
-        var tb = new Tabel('Artikel'), n = 0;
+        var tb = new Tabel_('Artikel'), n = 0;
         ids.forEach(function (k) {
           var a = tb.ambil(k);
           if (!a || !a.doc_url) return;
@@ -212,7 +244,7 @@ MODUL.artikel = {
 function modulAktif_(id) { return !!MODUL[id] && CONFIG.MODUL_NONAKTIF.indexOf(id) < 0; }
 
 function daftarKategori_(denganJumlah) {
-  var rows = bacaTabel('Kategori').sort(function (a, b) { return (a.urutan || 0) - (b.urutan || 0); });
+  var rows = bacaTabel_('Kategori').sort(function (a, b) { return (a.urutan || 0) - (b.urutan || 0); });
   var jumlah = {};
   if (denganJumlah) artikelTayang_().forEach(function (a) { jumlah[a.kategori] = (jumlah[a.kategori] || 0) + 1; });
   return rows.map(function (k) {
@@ -226,11 +258,11 @@ function daftarKategori_(denganJumlah) {
 function artikelTayang_() {
   return dariCache_('artikelTayang', CONFIG.CACHE_DETIK, function () {
     var kon = {};
-    if (modulAktif_('kontributor')) bacaTabel('Kontributor').forEach(function (k) { kon[k.slug] = k; });
+    if (modulAktif_('kontributor')) bacaTabel_('Kontributor').forEach(function (k) { kon[k.slug] = k; });
     var kat = {};
-    bacaTabel('Kategori').forEach(function (k) { kat[k.slug] = k; });
+    bacaTabel_('Kategori').forEach(function (k) { kat[k.slug] = k; });
     var sekarang = Date.now();
-    return bacaTabel('Artikel').filter(function (a) {
+    return bacaTabel_('Artikel').filter(function (a) {
       if (a.status !== STATUS.TAYANG || !a.slug) return false;
       if (a.kontributor) {
         var k = kon[a.kontributor];
@@ -242,17 +274,53 @@ function artikelTayang_() {
       var k = kat[a.kategori] || {};
       var ko = a.kontributor ? kon[a.kontributor] : null;
       return {
-        id: a.id, judul: a.judul, slug: a.slug, kategori: a.kategori,
+        id: a.id, judul: a.judul_kurasi || a.judul, slug: a.slug, kategori: a.kategori,
         kategori_nama: k.nama || '', warna: k.warna || 'netral',
         penulis: a.penulis || (ko ? ko.nama : ''),
         kontributor: ko ? { slug: ko.slug, nama: ko.nama, foto: ko.foto || '' } : null,
-        ringkasan: a.ringkasan, sampul: a.sampul, tanggal: a.tanggal, diperbarui: a.diperbarui,
+        ringkasan: a.ringkasan_kurasi || a.ringkasan, sampul: a.sampul, tanggal: a.tanggal, diperbarui: a.diperbarui,
         sumber: a.sumber || 'internal', disematkan: a.disematkan, sematkan_sampai: a.sematkan_sampai,
         // internal (tidak dikirim ke publik)
         _doc: a.doc_url, _file: a.konten_file, url_asli: a.url_asli
       };
     }).sort(function (x, y) { return String(y.tanggal).localeCompare(String(x.tanggal)); });
   });
+}
+
+/**
+ * Pemerataan: artikel dalam CONFIG.PEMERATAAN_HARI terakhir disusun bergiliran per
+ * kontributor/penulis (yang paling baru menulis mendapat giliran pertama), sehingga
+ * daftar tidak didominasi satu penulis. Artikel yang lebih lama tetap urut tanggal.
+ */
+function ratakan_(list) {
+  if (!CONFIG.PEMERATAAN_ARTIKEL || list.length < 3) return list;
+  var batas = Date.now() - CONFIG.PEMERATAAN_HARI * 86400000;
+  var grup = {}, urutan = [], lama = [];
+  list.forEach(function (a) {
+    var t = a.tanggal ? new Date(a.tanggal).getTime() : 0;
+    if (t < batas) { lama.push(a); return; }
+    var k = a.kontributor ? 'k:' + a.kontributor.slug : 'p:' + String(a.penulis || '').toLowerCase();
+    if (!grup[k]) { grup[k] = []; urutan.push(k); }
+    grup[k].push(a);
+  });
+  var out = [], masih = true;
+  while (masih) {
+    masih = false;
+    urutan.forEach(function (k) { if (grup[k].length) { out.push(grup[k].shift()); masih = true; } });
+  }
+  return out.concat(lama);
+}
+
+/** Bersihkan nomor urut / kode di depan nama file kontributor. */
+function bersihJudul_(s) {
+  var t = String(s || '').replace(/\.(docx?|gdoc|txt|md)$/i, '').trim();
+  if (!CONFIG.BERSIHKAN_NOMOR_JUDUL) return t;
+  var b = t
+    .replace(/^\s*(?:[\[(]\s*\d+[a-z]?\s*[\])]|\d+[a-z]?(?:[.\-_):]|\s+-)|(?:no|nomor|bab|part)\.?\s*\d+\s*[.\-_:)]?)\s*/i, '')
+    .replace(/\s*\(\d+\)\s*$/, '')
+    .replace(/^[-_.:\s]+/, '')
+    .trim();
+  return b || t;
 }
 
 function sedangDisematkan_(a) {

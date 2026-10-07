@@ -27,7 +27,7 @@ function buatFeed_(p, format) {
   var limit = Math.min(Math.max(Number(p.limit) || CONFIG.FEED_JUMLAH, 1), 100);
   var profil = {};
   if (modulAktif_('kontributor')) {
-    publikSaja_('Kontributor', bacaTabel('Kontributor')).forEach(function (k) { profil[k.slug] = k; });
+    publikSaja_('Kontributor', bacaTabel_('Kontributor')).forEach(function (k) { profil[k.slug] = k; });
   }
 
   var items = artikelTayang_().filter(function (a) {

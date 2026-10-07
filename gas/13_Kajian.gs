@@ -100,7 +100,7 @@ MODUL.kajian = {
       id: 'ringkasan_wilayah', sheet: 'LogLokasi', label: 'Ringkasan per wilayah',
       run: function () {
         var hitung = {};
-        bacaTabel('LogLokasi').forEach(function (r) {
+        bacaTabel_('LogLokasi').forEach(function (r) {
           var w = (r.kecamatan || '(tidak diketahui)') + (r.kota ? ', ' + r.kota : '');
           if (!hitung[w]) hitung[w] = { wilayah: w, permintaan: 0, nomor: {} };
           hitung[w].permintaan++;
@@ -120,7 +120,7 @@ MODUL.kajian = {
 function jadwalKajian_() {
   var hariIni = hariIni_();
   var dowHariIni = Number(fmt_(new Date(), 'u')); // 1=Senin … 7=Ahad
-  return bacaTabel('Kajian').filter(function (k) { return k.tampil !== false; }).map(function (k) {
+  return bacaTabel_('Kajian').filter(function (k) { return k.tampil !== false; }).map(function (k) {
     var tgl = '';
     if (k.jenis === 'Rutin') {
       var target = NAMA_HARI.indexOf(k.hari_rutin) + 1;

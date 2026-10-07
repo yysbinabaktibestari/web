@@ -32,7 +32,7 @@
 
   function program(p) {
     return '<article class="program" style="margin-bottom:20px">' +
-      U.gambar(p.poster, 'Poster ' + p.nama, 'Poster program', 'poster') +
+      (p.poster ? U.gambar(p.poster, 'Poster ' + p.nama, '', 'poster') : '') +
       '<div class="isi"><span class="chip c-karat">' + U.ikon('jam', 14) + 'Open Donasi' + (p.selesai ? ' · s.d. ' + U.tgl(p.selesai, true) : '') + '</span>' +
         '<h2>' + esc(p.nama) + '</h2>' + (p.deskripsi ? '<p class="redup" style="margin:0;white-space:pre-line">' + esc(p.deskripsi) + '</p>' : '') +
         (p.target ? '<div style="display:flex;flex-direction:column;gap:6px"><div class="progres" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + (p.persen || 0) + '" aria-label="Progres dana">' +
@@ -53,7 +53,7 @@
         '<header class="kepala-halaman"><span class="label-atas" style="background:var(--karat-muda);color:var(--karat-tua)">Infaq · Sedekah · Wakaf</span>' +
           '<h1>Donasi</h1>' + (s.ajakan_donasi ? '<p>' + esc(s.ajakan_donasi) + '</p>' : '') + '</header>' +
         d.program.map(program).join('') +
-        '<section aria-labelledby="h-rek" style="padding:36px 0 56px"><div class="kepala-bagian"><h2 id="h-rek">Rekening Donasi</h2></div>' +
+        (!d.rekening.length && !s.qris ? '' : '<section aria-labelledby="h-rek" style="padding:36px 0 56px"><div class="kepala-bagian"><h2 id="h-rek">Rekening Donasi</h2></div>' +
           '<div class="grid">' + d.rekening.map(function (r, i) {
             return '<div class="kartu rekening">' +
               '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><strong style="font-size:18px">' + esc(r.bank) + '</strong>' +
@@ -67,7 +67,7 @@
           (s.qris ? '<div class="kartu rekening" style="align-items:center;text-align:center"><strong style="font-size:18px">QRIS</strong>' +
             '<img src="' + esc(s.qris) + '" alt="Kode QRIS donasi" style="width:200px;border-radius:12px">' +
             '<span class="redup" style="font-size:14px">Pindai dari aplikasi bank atau dompet digital.</span></div>' : '') +
-          '</div>' + (d.rekening.length || s.qris ? '' : '<p class="kosong">Informasi rekening belum diisi.</p>') + '</section>' +
+          '</div></section>') +
       '</div>' +
       '<section class="bagian bagian-putih" aria-labelledby="h-konf"><div class="wadah dua-kolom" style="padding-bottom:0">' +
         '<div style="display:flex;flex-direction:column;gap:16px"><h2 id="h-konf" class="display" style="font-size:32px">Konfirmasi Donasi</h2>' +
@@ -85,7 +85,7 @@
           '<div class="medan"><label for="d-wa">Nomor WhatsApp <span class="wajib">*</span></label><input id="d-wa" name="wa" type="tel" inputmode="tel" required autocomplete="tel"></div>' +
           '<div class="medan"><label for="d-nom">Nominal (Rp) <span class="wajib">*</span></label><input id="d-nom" name="nominal" inputmode="numeric" required></div>' +
           '<div class="medan"><label for="d-tgl">Tanggal transfer</label><input id="d-tgl" name="tanggal_transfer" type="date"></div>' +
-          '<div class="medan"><label for="d-rek">Rekening tujuan</label><select id="d-rek" name="rekening">' + opsiRek.map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select></div>' +
+          (opsiRek.length ? '<div class="medan"><label for="d-rek">Rekening tujuan</label><select id="d-rek" name="rekening">' + opsiRek.map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select></div>' : '') +
           (d.program.length ? '<div class="medan penuh"><label for="d-prog">Untuk program</label><select id="d-prog" name="program"><option value="">Donasi umum</option>' +
             d.program.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.nama) + '</option>'; }).join('') + '</select></div>' : '') +
           '<div class="medan penuh"><label for="d-bukti">Bukti transfer (gambar/PDF, maks 5 MB)</label><input id="d-bukti" name="bukti" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></div>' +
