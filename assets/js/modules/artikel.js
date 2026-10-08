@@ -47,7 +47,7 @@
     var baris = pilihan.map(function (k) {
       var on = (q.kontributor || '') === k.slug;
       var ikon = k.slug === '' ? '' : k.yayasan
-        ? '<span class="avatar kecil' + (k.logo ? ' avatar-logo' : '') + '" style="' + (k.logo ? '' : 'background:var(--biru);color:#fff') + '">' + (k.logo ? '<img src="' + esc(U.urlGambar(k.logo)) + '" alt="">' : U.ikon('buku', 14)) + '</span>'
+        ? '<span class="avatar kecil' + (k.logo ? ' avatar-logo' : '') + '" style="' + (k.logo ? '' : 'background:var(--biru);color:#fff') + '">' + (k.logo ? '<img src="' + esc(U.urlGambar(k.logo)) + '" alt="" class="gambar-lindung" draggable="false">' : U.ikon('buku', 14)) + '</span>'
         : U.avatar(k.nama, k.foto, 'kecil');
       return '<a class="pil pil-penulis' + (on ? ' aktif' : '') + '"' + (on ? ' aria-current="page"' : '') + ' href="' +
         U.hash('artikel', { kontributor: k.slug, kategori: q.kategori }) + '">' + ikon + '<span>' + esc(k.nama) + '</span>' +

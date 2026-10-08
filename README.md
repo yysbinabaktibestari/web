@@ -37,7 +37,7 @@ Cek koneksi kapan saja di `https://USERNAME.github.io/REPO/cek.html`.
 
 `Pemuat.gs` sendiri hampir tidak pernah berubah. Bila suatu saat berubah, catatan rilis akan menyebutkannya.
 
-**Bila `pasang/appsscript.json` berubah** (izin baru, mis. YouTube): tempel ulang isinya → jalankan `perbaruiSistem` dari editor & klik **Izinkan** → **Terapkan › Kelola deployment › ✎ › Versi baru › Terapkan**. Langkah terakhir perlu karena web app (panel admin & website) memakai izin dari versi yang di-deploy; kode sistem sendiri tetap tidak perlu deploy ulang.
+**Bila `pasang/appsscript.json` berubah** (izin baru, mis. YouTube): tempel ulang isinya → jalankan `perbaruiSistem` dari editor & klik **Izinkan**. Hasilnya (termasuk status YouTube) tampil di *Log eksekusi*. Pekerjaan yang butuh izin baru otomatis dijalankan di latar belakang dengan izin itu, jadi deploy ulang tidak diperlukan.
 
 ## 3. Website di GitHub Pages
 
@@ -66,7 +66,8 @@ Cek koneksi kapan saja di `https://USERNAME.github.io/REPO/cek.html`.
 | **Kajian** | Admin › Jadwal kajian. Isi lat/lng (klik kanan di Google Maps › salin koordinat) agar muncul di peta & bisa diurutkan dari yang terdekat. |
 | **Log lokasi** | Tersimpan permanen di sheet *LogLokasi*. Hapus hanya manual (centang › Hapus terpilih). **Unduh Excel (.xlsx)** tersedia di setiap tabel. |
 | **Teks situs** | Admin › Pengaturan situs (nama, hero, visi, misi, alamat, QRIS, embed peta, dll.). Bagian yang belum diisi otomatis disembunyikan dari website. |
-| **Logo & gambar** | Tempel link berbagi Google Drive apa adanya (`…/file/d/…/view`) — diubah otomatis jadi link gambar, dan file Drive milik akun yayasan langsung dibagikan *Siapa saja yang memiliki link* saat disimpan dari panel admin. Link GitHub (`…/blob/…`), Dropbox, dan Imgur juga dikenali. Link Google Photos/Instagram/Facebook tidak bisa dipakai. Form admin menampilkan pratinjau; bila gambar gagal dimuat, website menampilkan ikon cadangan (bukan gambar rusak). |
+| **Logo** | Tempel link Google Drive logo di Pengaturan `logo`. Website hanya memakai **salinan kecil** (maks. 400 px) di folder gambar publik; file asli tetap privat & ID-nya tidak terlihat. Di website logo tidak bisa diseret, diklik-kanan "Simpan gambar", atau ditekan-lama untuk disimpan, dan footer memuat pernyataan perlindungan. (Tangkapan layar tetap mungkin — tidak ada website yang bisa mencegahnya.) Mengganti isi file logo di Drive: simpan ulang Pengaturan `logo` di panel. |
+| **Gambar lain** | Tempel link berbagi Google Drive apa adanya (`…/file/d/…/view`) — diubah otomatis jadi link gambar, dan file Drive milik akun yayasan langsung dibagikan *Siapa saja yang memiliki link* saat disimpan dari panel admin. Link GitHub (`…/blob/…`), Dropbox, dan Imgur juga dikenali. Link Google Photos/Instagram/Facebook tidak bisa dipakai. Form admin menampilkan pratinjau; bila gambar gagal dimuat, website menampilkan ikon cadangan (bukan gambar rusak). |
 | **Katalog video** | Lihat bagian 6b. |
 | **Mode baca artikel** | Otomatis di setiap artikel: garis progres tipis di atas layar, bilah bawah (*Kembali · Tampilan · Ke atas · Bagikan*; di laptop berupa bilah melayang), pilihan huruf Serif/Sans, ukuran huruf, tema Terang/Krem/Gelap, dan tawaran *Lanjutkan* dari posisi terakhir. Pilihan tersimpan di perangkat pembaca. |
 | **Buku kas & laporan** | Lihat bagian 6c. |
@@ -80,7 +81,9 @@ Kontributor cukup menyetor **satu sumber** (lewat formulir `#/kontributor/daftar
 - **Folder Google Drive** yang dibagikan *Siapa saja yang memiliki link · Pelihat*. Setiap Google Doc = 1 artikel, nama file = judul. **Subfolder dibaca sampai 5 tingkat**, termasuk pintasan (shortcut) ke Doc; kategori diambil dari nama subfolder terdalam yang cocok dengan nama kategori (mis. `Opini/2026/Pendidikan` → Pendidikan; nomor di depan nama folder diabaikan). Hanya format Google Docs yang dibaca (bukan .docx/PDF). Doc yang dihapus dari folder otomatis jadi *Tidak tayang*.
 - **Feed website**: RSS 2.0, Atom, atau JSON Feed (WordPress `/feed`, Blogger `/feeds/posts/default`, atau website yayasan lain yang memakai sistem ini).
 
-Sinkron berjalan **tiap jam** (atau tombol **Sinkron sekarang**). Folder: tidak ada batas jumlah Doc; hanya Doc baru/berubah yang diproses, dan bila satu putaran melewati ±4,5 menit sisanya dilanjutkan jam berikutnya. Feed: sebanyak item yang dimuat feed itu (umumnya 10–20 terbaru), lalu terkumpul dari waktu ke waktu. Bawaan kontributor & artikel barunya **Tayang**; ubah per kontributor atau per artikel ke **Tidak tayang** kapan saja. Profil kontributor (nama, foto, website, biografi) tampil di halaman artikel dan `#/kontributor/slug`. Email/WA kontributor tidak pernah dikirim ke publik.
+Sinkron berjalan **tiap jam** (atau tombol **Sinkron sekarang**). Selama masih ada antrean, putaran berikutnya **otomatis menyusul ±1 menit kemudian** (tidak menunggu sejam) sampai habis.
+- Folder: semua Doc, tanpa batas jumlah; hanya Doc baru/berubah yang diproses (±5 menit per putaran).
+- Feed: halaman terbaru tiap putaran, lalu **seluruh arsip lama halaman demi halaman** (WordPress `?paged=`, Blogger/Atom `rel="next"`, JSON Feed `next_url`; hingga 30 halaman per putaran). Kolom *Impor arsip feed* menunjukkan halaman berikutnya atau `selesai`. Bawaan kontributor & artikel barunya **Tayang**; ubah per kontributor atau per artikel ke **Tidak tayang** kapan saja. Profil kontributor (nama, foto, website, biografi) tampil di halaman artikel dan `#/kontributor/slug`. Email/WA kontributor tidak pernah dikirim ke publik.
 
 **Kurasi editor.** Artikel kontributor baru berstatus kurasi *Belum dikurasi* (tetap tayang sesuai status). Di Admin › Artikel, filter cepat **Belum dikurasi** menampilkan antreannya. Isi **Judul tayang (kurasi)** / **Ringkasan tayang (kurasi)** untuk mengganti teks dari kontributor, misalnya nama file bernomor. Isian kurasi tidak tertimpa sinkron, dan nama editor + waktunya tercatat. Nomor urut di depan nama file (`01. Judul`, `3 - Judul`, `(2) Judul`, `Bab 2: Judul`) juga sudah dibersihkan otomatis (`BERSIHKAN_NOMOR_JUDUL`).
 
@@ -106,9 +109,9 @@ Atur bawaan di `00_Konfigurasi.gs`: `KONTRIBUTOR_STATUS_DEFAULT`, `ARTIKEL_KONTR
 **Mengaktifkan YouTube Data API (sekali):**
 1. Tempel ulang isi `pasang/appsscript.json` ke `appsscript.json` di editor Apps Script; di panel kiri **Layanan (+)** pastikan *YouTube Data API v3* tercantum (bila belum: pilih › Tambahkan).
 2. Jalankan `perbaruiSistem` dari editor → klik **Izinkan** (izin "lihat akun YouTube" = membaca data publik channel).
-3. **Terapkan › Kelola deployment › ✎ › Versi: Versi baru › Terapkan.** Tanpa langkah ini tombol *Sinkron sekarang* di panel memunculkan galat *"You do not have permission … youtube.readonly"* karena panel masih memakai izin versi lama. (Sinkron otomatis tiap jam sudah benar setelah langkah 2.)
+3. Lihat *Log eksekusi*: baris **"YouTube Data API: siap"** berarti beres. Bila tertulis *izin belum tercantum*, isi `appsscript.json` belum terganti — ulangi langkah 1.
 
-Bila API belum aktif, sinkron tetap jalan lewat RSS dan kolom *Hasil* menjelaskan langkah perbaikannya.
+Tombol *Sinkron sekarang* di panel langsung memasukkan video terbaru, lalu **sinkron lengkap (semua video & playlist) berjalan otomatis di latar belakang** dalam 1–3 menit memakai izin dari langkah 2 — tidak perlu deploy ulang. Impor channel besar berlanjut sendiri tiap ±1 menit sampai selesai. Bila API belum aktif, video tetap masuk lewat RSS dan kolom *Hasil* menjelaskan langkah perbaikannya.
 
 ## 6c. Keuangan: buku kas & sinkron dengan laporan lain
 
@@ -166,6 +169,7 @@ Modul dapat menambah: sheet + kolom (form admin dibuat otomatis), endpoint GET/P
 - Cara kerja pemuat: `perbaruiSistem` mengunduh zip repo, menggabungkan `gas/*.gs` + `Admin.html`, mengujinya di ruang terpisah (sintaks & fungsi wajib), lalu menyimpannya terkompresi di Script Properties (versi aktif + satu versi sebelumnya). Setiap permintaan memuat kode itu sekali. File yang tidak dipakai lagi di `gas/` cukup dikosongkan, jangan dihapus — unggahan lewat browser tidak menghapus file lama di GitHub.
 - Tanpa pemuat pun bisa: tempel semua isi `gas/` (+ `pasang/appsscript.json`) ke proyek Apps Script secara manual.
 
+- Putaran lanjutan otomatis berhenti bila pemakaian trigger hari itu > 60 menit (`SINKRON_LANJUTAN_MENIT_HARI`), menjaga jatah akun Gmail ±90 menit/hari; sisanya lanjut pada jadwal per jam.
 - Apps Script punya kuota harian (pengambilan URL, geocoding, durasi eksekusi; lihat halaman *Quotas for Google Services*). Data publik di-cache 5 menit di server dan di browser, dan hasil geocoding di-cache per area, sehingga pemakaian kuota hemat. Bila kuota geocoding habis, koordinat tetap tercatat tanpa nama kecamatan.
 - Gambar artikel disalin ke folder Drive publik `Gambar Artikel (publik)`; jangan ubah izin bagikannya.
 - Fitur kajian terdekat mewajibkan nomor WA + izin lokasi. Teks pemberitahuan pencatatan di halaman Kajian sebaiknya dipertahankan sebagai dasar persetujuan pengunjung (UU PDP).

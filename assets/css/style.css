@@ -419,3 +419,7 @@ main:focus { outline: none; }
 :root[data-tema="gelap"] .bilah-baca button.utama { color: var(--emas-terang); }
 :root[data-tema="gelap"] .isi-artikel img { opacity: .92; }
 :root[data-tema="gelap"] .avatar:not(.avatar-logo) { color: #CFE0F3; }
+
+/* Logo terlindung: tidak bisa diseret, dipilih, atau disimpan lewat menu gambar / tekan-lama */
+.gambar-lindung { -webkit-user-drag: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; pointer-events: none; }
+.logo-tanda.ada-gambar, .avatar-logo { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }

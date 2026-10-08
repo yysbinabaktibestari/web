@@ -68,7 +68,7 @@ var App = (function () {
       l.rel = 'alternate'; l.type = 'application/rss+xml'; l.title = nama || 'RSS'; l.href = data.feed;
       document.head.appendChild(l);
     }
-    $('logo').innerHTML = '<span class="logo-tanda' + (s.logo ? ' ada-gambar' : '') + '">' + (s.logo ? '<img src="' + U.esc(U.urlGambar(s.logo)) + '" alt="Logo ' + U.esc(nama) + '">' : '<span style="color:#fff">' + U.ikon('buku', 22) + '</span>') + '</span>' +
+    $('logo').innerHTML = '<span class="logo-tanda' + (s.logo ? ' ada-gambar' : '') + '">' + (s.logo ? '<img src="' + U.esc(U.urlGambar(s.logo)) + '" alt="Logo ' + U.esc(nama) + '" class="gambar-lindung" draggable="false">' : '<span style="color:#fff">' + U.ikon('buku', 22) + '</span>') + '</span>' +
       '<span class="logo-nama">' + U.esc(nama) + '</span>';
 
     var navs = Object.keys(modul).map(function (id) { return modul[id]; }).filter(function (m) { return m.nav; });
@@ -124,7 +124,8 @@ var App = (function () {
         (kontak.length ? '<span style="display:flex;flex-wrap:wrap;gap:0 18px">' + kontak.join('') + '</span>' : '') +
       '</div>' +
       '<nav aria-label="Menu bawah">' + tautan.join('') + '</nav></div>' +
-      '<div class="wadah bawah">© ' + new Date().getFullYear() + (nama ? ' ' + U.esc(nama) : '') + '</div>';
+      '<div class="wadah bawah">© ' + new Date().getFullYear() + (nama ? ' ' + U.esc(nama) : '') +
+        (s.logo ? '. Logo dan identitas ' + (nama ? U.esc(nama) : 'yayasan') + ' dilindungi; dilarang digunakan tanpa izin.' : '') + '</div>';
   }
 
   /* ---------------- Router ---------------- */

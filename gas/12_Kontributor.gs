@@ -41,6 +41,7 @@ MODUL.kontributor = {
           bawaan: 'Tayang', daftar: false, bantuan: 'Status awal tiap artikel baru hasil sinkron' },
         { k: 'terakhir_sinkron', l: 'Terakhir sinkron', t: 'datetime', ro: true, privat: true },
         { k: 'catatan_sinkron', l: 'Hasil sinkron', t: 'text', ro: true, privat: true },
+        { k: 'arsip_lanjut', l: 'Impor arsip feed', t: 'text', ro: true, privat: true, daftar: false, bantuan: 'Otomatis: halaman feed berikutnya yang akan diambil, atau "selesai"' },
         { k: 'terdaftar', l: 'Terdaftar', t: 'datetime', ro: true, daftar: false }
       ]
     }
@@ -185,17 +186,21 @@ function sinkronKontributor_(ids) {
     var daftar = tk.objek().filter(function (k) {
       return k.sumber_url && (!ids || ids.indexOf(k.id) >= 0);
     }).sort(function (a, b) { return String(a.terakhir_sinkron).localeCompare(String(b.terakhir_sinkron)); });
-    var kat = petaKategori_();
+    var kat = petaKategori_(), adaAntrean = false;
     for (var i = 0; i < daftar.length; i++) {
       if (Date.now() - mulai > CONFIG.BATAS_WAKTU_MS) {
-        detail.push({ kontributor: '(sisanya)', hasil: 'Dilanjutkan pada sinkron berikutnya (batas waktu).' });
+        detail.push({ kontributor: '(sisanya)', hasil: 'Dilanjutkan otomatis ±1 menit lagi (batas waktu).' });
+        adaAntrean = true;
         break;
       }
       var k = daftar[i], catatan;
       try {
         var batas = mulai + CONFIG.BATAS_WAKTU_MS;
-        var h = k.sumber_tipe === 'feed' ? sinkronFeed_(k, ta, kat) : sinkronFolder_(k, ta, kat, batas);
-        catatan = 'OK · ' + h.baru + ' baru, ' + h.ubah + ' diperbarui' + (h.hilang ? ', ' + h.hilang + ' disembunyikan' : '') + (h.tertunda ? ', ' + h.tertunda + ' menyusul' : '');
+        var h = k.sumber_tipe === 'feed' ? sinkronFeed_(k, ta, kat, batas) : sinkronFolder_(k, ta, kat, batas);
+        catatan = 'OK · ' + h.baru + ' baru, ' + h.ubah + ' diperbarui' + (h.hilang ? ', ' + h.hilang + ' disembunyikan' : '') +
+          (h.tertunda ? ', ' + h.tertunda + ' menyusul' : '') + (h.arsip ? ' · ' + h.arsip : '');
+        if (h.tertunda || h.arsipLanjut) adaAntrean = true;
+        if (h.arsipLanjut !== undefined) tk.set({ id: k.id, arsip_lanjut: h.arsipLanjut || 'selesai' });
       } catch (e) {
         catatan = 'Gagal: ' + pesanError_(e);
       }
@@ -208,7 +213,10 @@ function sinkronKontributor_(ids) {
   } finally {
     lock.releaseLock();
   }
-  return { ringkas: detail.length ? 'Sinkron selesai untuk ' + detail.length + ' kontributor.' : 'Tidak ada kontributor dengan sumber.', detail: detail };
+  // Antrean belum habis → putaran berikutnya 1 menit lagi (bukan menunggu sejam)
+  var lanjut = adaAntrean && typeof jadwalkanSegera_ === 'function' && jadwalkanSegera_('kontributor');
+  return { ringkas: (detail.length ? 'Sinkron selesai untuk ' + detail.length + ' kontributor.' : 'Tidak ada kontributor dengan sumber.') +
+    (lanjut ? ' Sisa antrean dilanjutkan otomatis di latar belakang.' : ''), detail: detail };
 }
 
 /** Fungsi untuk trigger per jam. */
@@ -329,17 +337,101 @@ function kategoriDariJalur_(jalur, kat) {
 
 /* ---------- Sumber: feed RSS / Atom / JSON Feed ---------- */
 
-function sinkronFeed_(k, ta, kat) {
-  var res = UrlFetchApp.fetch(k.sumber_url, {
+/** Maksimal halaman arsip feed yang diambil per putaran (sisanya otomatis putaran berikutnya). */
+var HALAMAN_ARSIP_PER_PUTARAN = 30;
+
+function ambilFeed_(url) {
+  var res = UrlFetchApp.fetch(url, {
     muteHttpExceptions: true, followRedirects: true,
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YayasanMirror/1.0)' }
   });
-  if (res.getResponseCode() >= 400) throw new Error('Feed tidak bisa diambil (HTTP ' + res.getResponseCode() + ').');
-  var items = parseFeed_(res.getContentText());
+  return { kode: res.getResponseCode(), teks: res.getResponseCode() < 400 ? res.getContentText() : '' };
+}
+
+/**
+ * Halaman pertama feed tiap putaran (tulisan terbaru), lalu arsip lama halaman demi halaman
+ * sampai habis: Atom/RSS rel="next", JSON Feed next_url, WordPress ?paged=N, Blogger start-index.
+ */
+function sinkronFeed_(k, ta, kat, batas) {
+  batas = batas || Date.now() + CONFIG.BATAS_WAKTU_MS;
+  var r = ambilFeed_(k.sumber_url);
+  if (r.kode >= 400) throw new Error('Feed tidak bisa diambil (HTTP ' + r.kode + ').');
+  var f = bacaFeed_(r.teks, k.sumber_url, 1);
   var h = { baru: 0, ubah: 0, hilang: 0, tertunda: 0 };
-  items.forEach(function (it) {
+  f.items.forEach(function (it) { prosesItemFeed_(it, k, ta, kat, h); });
+  if (k.arsip_lanjut === 'selesai') return h;
+  // ---- arsip
+  var berikut = k.arsip_lanjut || f.berikut, n = 0, diambil = 0, lihat = {};
+  while (berikut && n < HALAMAN_ARSIP_PER_PUTARAN && Date.now() < batas) {
+    if (lihat[berikut]) { berikut = ''; break; }
+    lihat[berikut] = 1;
+    var rr = ambilFeed_(berikut);
+    if (rr.kode >= 400) { berikut = ''; break; }                 // mis. WordPress ?paged melewati halaman terakhir → 404
+    var ff;
+    try { ff = bacaFeed_(rr.teks, berikut, halamanKe_(berikut)); } catch (e) { berikut = ''; break; }
+    if (!ff.items.length) { berikut = ''; break; }
+    var sebelum = h.baru + h.ubah;
+    ff.items.forEach(function (it) { prosesItemFeed_(it, k, ta, kat, h); });
+    diambil += ff.items.length;
+    berikut = ff.berikut;
+    n++;
+    if (ff.wpTebak && h.baru + h.ubah === sebelum && ff.items.every(function (it) { return ta.ambil(idFeed_(k, it)); })) {
+      // halaman tebakan WordPress yang isinya sudah semua ada → anggap arsip habis
+      berikut = '';
+    }
+  }
+  h.arsipLanjut = berikut || '';
+  h.arsip = berikut ? 'arsip: ' + n + ' halaman lagi terbaca, berlanjut' : (n ? 'arsip lama selesai (' + diambil + ' tulisan diperiksa)' : '');
+  return h;
+}
+
+function idFeed_(k, it) { return 'r_' + md5_(k.slug + '|' + (it.guid || it.url || it.judul)).slice(0, 16); }
+
+function halamanKe_(url) {
+  var m = String(url).match(/[?&]paged=(\d+)/);
+  return m ? Number(m[1]) : 0;
+}
+
+/** Item + tautan halaman berikutnya dari satu halaman feed. */
+function bacaFeed_(teks, url, ke) {
+  var s = String(teks || '').replace(/^\uFEFF/, '').trim();
+  var out = { items: [], berikut: '', wpTebak: false };
+  if (s.charAt(0) === '{') {
+    var j = JSON.parse(s);
+    out.items = parseJsonFeed_(j);
+    out.berikut = j.next_url || '';
+    return out;
+  }
+  var root = XmlService.parse(s).getRootElement();
+  var atom = XmlService.getNamespace('http://www.w3.org/2005/Atom');
+  var cariNext = function (el, ns) {
+    var href = '';
+    (ns ? el.getChildren('link', ns) : el.getChildren('link')).forEach(function (l) { if (!href && atribut_(l, 'rel') === 'next') href = atribut_(l, 'href'); });
+    return href;
+  };
+  if (root.getName() === 'rss') {
+    out.items = parseRss_(root);
+    var ch = root.getChild('channel');
+    out.berikut = ch ? cariNext(ch, atom) : '';
+    var gen = ch ? teksAnak_(ch, 'generator') : '';
+    if (!out.berikut && out.items.length && (/wordpress/i.test(gen) || /\/feed\/?(\?|$)/.test(url))) {
+      // WordPress: halaman arsip lewat ?paged=N
+      var ke2 = (ke || halamanKe_(url) || 1) + 1;
+      out.berikut = /[?&]paged=\d+/.test(url) ? url.replace(/([?&]paged=)\d+/, '$1' + ke2) : url + (url.indexOf('?') >= 0 ? '&' : '?') + 'paged=' + ke2;
+      out.wpTebak = true;
+    }
+  } else if (root.getName() === 'feed') {
+    out.items = parseAtom_(root);
+    out.berikut = cariNext(root, atom);
+  } else {
+    throw new Error('Format feed tidak dikenali (didukung: RSS 2.0, Atom, JSON Feed).');
+  }
+  return out;
+}
+
+function prosesItemFeed_(it, k, ta, kat, h) {
     if (!it.judul) return;
-    var id = 'r_' + md5_(k.slug + '|' + (it.guid || it.url || it.judul)).slice(0, 16);
+    var id = idFeed_(k, it);
     var html = absolutkan_(bersihkanHtml_(it.konten || ''), it.url || k.website);
     var hash = 'h' + md5_(it.judul + '|' + html).slice(0, 16);
     var lama = ta.ambil(id);
@@ -364,8 +456,6 @@ function sinkronFeed_(k, ta, kat) {
       hash: hash
     });
     if (lama) h.ubah++; else h.baru++;
-  });
-  return h;
 }
 
 function parseFeed_(teks) {

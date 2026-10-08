@@ -26,7 +26,7 @@ MODUL.situs = {
         { kunci: 'tagline', nilai: '', keterangan: 'Label kecil di atas judul beranda' },
         { kunci: 'judul_hero', nilai: '', keterangan: 'Judul besar di beranda' },
         { kunci: 'deskripsi', nilai: '', keterangan: 'Paragraf di bawah judul beranda & deskripsi SEO' },
-        { kunci: 'logo', nilai: '', keterangan: 'Link gambar logo. Boleh link berbagi Google Drive (otomatis dibagikan publik)' },
+        { kunci: 'logo', nilai: '', keterangan: 'Link logo di Google Drive (disarankan): website hanya memakai salinan kecil, file asli tetap privat' },
         { kunci: 'foto_hero', nilai: '', keterangan: 'Link foto kegiatan di beranda. Boleh link Google Drive' },
         { kunci: 'sejarah', nilai: '', keterangan: 'Halaman Tentang' },
         { kunci: 'visi', nilai: '', keterangan: 'Halaman Tentang' },
@@ -139,7 +139,8 @@ MODUL.situs = {
   sebelumSimpan: function (nama, obj, lama) {
     if (nama !== 'Pengaturan') return;
     var kunci = obj.kunci || (lama && lama.kunci);
-    if (KUNCI_GAMBAR_.indexOf(kunci) >= 0 && obj.nilai) publikkanGambar_(obj.nilai, true);
+    if (kunci === 'logo' && obj.nilai) gambarTerlindung_(obj.nilai, true);
+    else if (KUNCI_GAMBAR_.indexOf(kunci) >= 0 && obj.nilai) publikkanGambar_(obj.nilai, true);
   }
 };
 

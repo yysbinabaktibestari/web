@@ -182,7 +182,11 @@ MODUL.video = {
 
   beranda: function () { return { video: videoTayang_().slice(0, 4) }; },
 
-  tugasPerJam: function () { sinkronVideo_(null); },
+  tugasPerJam: function () {
+    var paksa = prop_('VIDEO_PAKSA');
+    if (paksa) prop_('VIDEO_PAKSA', null);
+    sinkronVideo_(null, { paksa: !!paksa });
+  },
 
   sebelumSimpan: function (nama, obj, lama) {
     if (nama !== 'Video') return;
@@ -373,7 +377,15 @@ function daftarSaring_(s) {
  * Sinkron
  * ============================================================== */
 
-function sinkronVideo_(ids) {
+/**
+ * ids: daftar id SumberVideo (null = semua). opsi.paksa: perbarui profil & playlist sekarang.
+ * Dari panel admin (web app), izin YouTube mengikuti versi yang di-deploy. Bila izin itu belum ada,
+ * video terbaru tetap masuk lewat RSS dan sinkron lengkap otomatis dialihkan ke latar belakang
+ * (trigger, memakai izin pemilik) — admin tidak perlu deploy ulang.
+ */
+function sinkronVideo_(ids, opsi) {
+  opsi = opsi || {};
+  var dariPanel = typeof ADMIN_AKTIF !== 'undefined' && !!ADMIN_AKTIF;
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) return { ringkas: 'Sinkron lain sedang berjalan.', detail: [] };
   var detail = [];
@@ -381,7 +393,7 @@ function sinkronVideo_(ids) {
     var mulai = Date.now();
     var ts = new Tabel_('SumberVideo');
     var ctx = { tv: new Tabel_('Video'), tp: new Tabel_('PlaylistVideo'), ada: {}, api: youtubeApi_(), apiGagal: '',
-      batas: mulai + CONFIG.BATAS_WAKTU_MS, paksa: !!ids };
+      batas: mulai + CONFIG.BATAS_WAKTU_MS, paksa: !!ids || !!opsi.paksa, dariPanel: dariPanel, lanjut: false };
     ctx.tv.objek().forEach(function (v) { if (v.video_id) ctx.ada[v.video_id] = v; });
     var daftar = ts.objek().filter(function (s) { return s.url && s.aktif !== false && (!ids || ids.indexOf(s.id) >= 0); })
       .sort(function (a, b) { return String(a.terakhir_sinkron || '').localeCompare(String(b.terakhir_sinkron || '')); });
@@ -395,6 +407,7 @@ function sinkronVideo_(ids) {
         label = h.ubah.nama || label;
         catatan = 'OK · ' + h.baru + ' video baru' + (h.playlist != null ? ' · ' + h.playlist + ' playlist' : '') +
           (h.lanjut ? ' · impor video lama berlanjut' : '') + (h.catatan ? ' · ' + h.catatan : '');
+        if (h.lanjut) ctx.lanjut = true;
       } catch (e) {
         catatan = 'Gagal: ' + pesanError_(e);
       }
@@ -409,7 +422,28 @@ function sinkronVideo_(ids) {
     lock.releaseLock();
   }
   var ringkas = detail.length ? 'Sinkron selesai untuk ' + detail.length + ' sumber.' : 'Belum ada channel/playlist aktif.';
-  if (ctx && ctx.apiGagal) ringkas += ' Video tetap masuk lewat RSS (±15 terbaru). ' + jelaskanGagalApi_(ctx.apiGagal);
+  var jenis = ctx && ctx.apiGagal ? jenisGagalApi_(ctx.apiGagal) : '';
+  // catat apakah sinkron latar belakang (izin pemilik) sudah bisa memakai YouTube API
+  if (!dariPanel && ctx) {
+    if (jenis === 'izin') prop_('YT_IZIN_LATAR', 'gagal');
+    else if (ctx.api) prop_('YT_IZIN_LATAR', null);
+  }
+  if (jenis === 'izin' && dariPanel && prop_('YT_IZIN_LATAR') === 'gagal') {
+    ringkas = 'Video terbaru (±15 per channel) sudah masuk. Untuk semua video & playlist, izin YouTube belum tercantum di proyek Apps Script. ' +
+      'Sekali saja: tempel ulang appsscript.json dari folder pasang/ di paket terbaru, lalu pilih perbaruiSistem › Jalankan › Izinkan.';
+  } else if (jenis === 'izin' && dariPanel && typeof jadwalkanSegera_ === 'function') {
+    var macet = latarMacet_();
+    prop_('VIDEO_PAKSA', '1');
+    jadwalkanSegera_('video');
+    ringkas = 'Video terbaru (±15 per channel) sudah masuk. ' + (macet
+      ? 'Sinkron lengkap di latar belakang sebelumnya belum berjalan — biasanya karena izin belum diberikan. ' +
+        'Sekali saja: di editor Apps Script pilih fungsi perbaruiSistem › Jalankan › Izinkan.'
+      : 'Sinkron lengkap (semua video & playlist) berjalan otomatis di latar belakang dalam 1–3 menit; muat ulang tabel sesudahnya.');
+  } else if (jenis) {
+    ringkas += ' ' + jelaskanGagalApi_(ctx.apiGagal);
+  }
+  // Masih ada video lama yang belum terimpor → lanjutkan 1 menit lagi, tidak menunggu sejam
+  if (ctx && ctx.lanjut && typeof jadwalkanSegera_ === 'function') jadwalkanSegera_('video');
   return { ringkas: ringkas, detail: detail };
 }
 
@@ -470,15 +504,38 @@ function sinkronSumberVideo_(s, ctx) {
 }
 
 function catatanTanpaApi_(ctx, teks) {
+  if (ctx.apiGagal && ctx.dariPanel && jenisGagalApi_(ctx.apiGagal) === 'izin') return 'video terbaru via RSS; sinkron lengkap dijadwalkan di latar belakang';
   return 'mode RSS (' + teks + ')' + (ctx.apiGagal ? ' — ' + jelaskanGagalApi_(ctx.apiGagal) : '');
+}
+
+function jenisGagalApi_(m) {
+  m = String(m || '');
+  if (/youtube\.readonly|do not have permission|insufficient[^.]*(scope|permission)|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(m)) return 'izin';
+  if (/has not been used|is disabled|accessNotConfigured|SERVICE_DISABLED/i.test(m)) return 'nonaktif';
+  if (/quota/i.test(m)) return 'kuota';
+  return 'lain';
+}
+
+/** Dipanggil setup()/perbaruiSistem dari editor: memastikan YouTube Data API benar-benar bisa dipakai. */
+function cekYoutube_() {
+  var api = youtubeApi_();
+  if (!api) return 'YouTube: memakai RSS (±15 video terbaru per channel). Untuk semua video & playlist, tambahkan Layanan › YouTube Data API v3.';
+  try {
+    api.Channels.list('id', { id: 'UC_x5XG1OV2P6uZZ5FSM9Ttw' });
+    return 'YouTube Data API: siap — semua video & playlist channel akan diambil.';
+  } catch (e) {
+    var j = jenisGagalApi_(pesanError_(e));
+    if (j === 'izin') return 'YouTube: izin belum tercantum. Tempel ulang appsscript.json dari folder pasang/ di paket terbaru, simpan, lalu jalankan perbaruiSistem lagi.';
+    return 'YouTube: ' + jelaskanGagalApi_(pesanError_(e));
+  }
 }
 
 /** Galat YouTube Data API → penjelasan + langkah perbaikan yang bisa dilakukan admin. */
 function jelaskanGagalApi_(m) {
   m = String(m || '');
-  if (/youtube\.readonly|do not have permission|insufficient[^.]*(scope|permission)|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(m)) {
-    return 'Izin YouTube belum aktif untuk web app ini. Perbaiki sekali: (1) di editor Apps Script jalankan perbaruiSistem lalu klik Izinkan; ' +
-      '(2) Terapkan › Kelola deployment › ✎ › Versi: Versi baru › Terapkan. Sinkron otomatis tiap jam sudah memakai izin baru setelah langkah 1.';
+  if (jenisGagalApi_(m) === 'izin') {
+    return 'Izin YouTube belum diberikan. Sekali saja: tempel ulang appsscript.json dari folder pasang/ di paket terbaru, ' +
+      'lalu di editor Apps Script pilih perbaruiSistem › Jalankan › Izinkan.';
   }
   if (/has not been used|is disabled|accessNotConfigured|SERVICE_DISABLED/i.test(m)) {
     return 'YouTube Data API belum aktif. Di editor Apps Script: Layanan (+) › YouTube Data API v3 › Tambahkan, lalu jalankan perbaruiSistem.';
@@ -608,7 +665,7 @@ function itemPlaylistApi_(plId, ctx) {
     var r = ctx.api.PlaylistItems.list('snippet,contentDetails', arg);
     (r.items || []).forEach(function (it) { var v = itemApi_(it, null); if (v) items.push(v); });
     pt = r.nextPageToken || '';
-  } while (pt && ++n < 20 && Date.now() < ctx.batas);
+  } while (pt && ++n < 100 && Date.now() < ctx.batas);
   return items;
 }
 

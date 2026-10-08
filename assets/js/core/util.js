@@ -124,6 +124,14 @@ var U = (function () {
     return '<span class="avatar ' + (kelas || '') + '" data-inisial="' + esc(inisial) + '">' + (foto ? '<img src="' + esc(urlGambar(foto)) + '" alt="" loading="lazy">' : esc(inisial)) + '</span>';
   }
 
+  /* Logo: cegah klik kanan "Simpan gambar", seret, dan tekan-lama di HP. */
+  ['contextmenu', 'dragstart'].forEach(function (jenis) {
+    document.addEventListener(jenis, function (ev) {
+      var t = ev.target;
+      if (t && t.closest && (t.closest('.gambar-lindung') || t.closest('.logo-tanda.ada-gambar') || t.closest('.avatar-logo'))) ev.preventDefault();
+    }, true);
+  });
+
   /* Gambar yang gagal dimuat (link salah / belum publik) diganti tampilan cadangan, bukan ikon rusak. */
   document.addEventListener('error', function (ev) {
     var img = ev.target;

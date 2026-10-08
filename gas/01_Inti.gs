@@ -284,6 +284,51 @@ function publikkanGambar_(u, paksa) {
   }
 }
 
+/**
+ * LOGO TERLINDUNG: website hanya memakai salinan kecil (sisi terpanjang 400 px) di folder gambar
+ * publik. File asli di Drive tidak dibagikan (dan dikembalikan ke "Terbatas" bila dulu dibuka
+ * oleh sistem ini), sehingga versi resolusi penuh tidak bisa diunduh orang lain.
+ * paksa=true (disimpan dari panel): buat ulang salinan & laporkan galat.
+ */
+function gambarTerlindung_(u, paksa) {
+  var id = idDriveGambar_(u);
+  if (!id) return urlGambar_(u);
+  var kunci = 'LINDUNG_' + id, ada = prop_(kunci);
+  if (ada && !paksa) return ada;
+  try {
+    var url = simpanGambar_(thumbnailDrive_(id, 400), 'logo');
+    prop_(kunci, url);
+    try {
+      var f = DriveApp.getFileById(id);
+      if (prop_('PUB_' + id) === '1' && f.getSharingAccess() === DriveApp.Access.ANYONE_WITH_LINK) {
+        f.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+      }
+      prop_('PUB_' + id, null);
+    } catch (e) { /* bukan pemilik file: biarkan */ }
+    return url;
+  } catch (e) {
+    if (paksa) throw new Error('Logo belum bisa diproses (' + pesanError_(e) + '). Pastikan link mengarah ke file gambar di Google Drive akun yayasan.');
+    try { publikkanGambar_(u); } catch (x) { /* abaikan */ }
+    return urlGambar_(u);
+  }
+}
+
+/** Gambar kecil dari file Drive (tanpa membagikan file aslinya). */
+function thumbnailDrive_(id, ukuran) {
+  var auth = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+  var r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '?fields=thumbnailLink', { headers: auth, muteHttpExceptions: true });
+  if (r.getResponseCode() === 200) {
+    var link = (JSON.parse(r.getContentText()) || {}).thumbnailLink;
+    if (link) {
+      var t = UrlFetchApp.fetch(link.replace(/=s\d+$/, '') + '=s' + ukuran, { headers: auth, muteHttpExceptions: true });
+      if (t.getResponseCode() === 200) return t.getBlob();
+    }
+  }
+  var b = DriveApp.getFileById(id).getThumbnail();
+  if (!b) throw new Error('pratinjau gambar tidak tersedia');
+  return b;
+}
+
 /** Normalisasi nomor WA Indonesia → 62xxxxxxxxxx. Kosong bila tidak valid. */
 function normalWa_(s) {
   var d = String(s || '').replace(/[^\d]/g, '');
@@ -314,6 +359,7 @@ function pengaturan_(semua) {
   if (!semua) {
     KUNCI_GAMBAR_.forEach(function (k) {
       if (!o[k]) return;
+      if (k === 'logo') { o[k] = gambarTerlindung_(o[k]); return; }
       try { publikkanGambar_(o[k]); } catch (e) { /* abaikan */ }
       o[k] = urlGambar_(o[k]);
     });

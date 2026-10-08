@@ -30,6 +30,7 @@ function setup() {
   pasangTrigger_();
   naikkanVersiCache();
   var pesan = 'Setup selesai: sheet, folder Drive, trigger & akun admin siap.' + (akun ? '\n' + akun : '');
+  try { if (typeof cekYoutube_ === 'function') pesan += '\n' + cekYoutube_(); } catch (e) { /* abaikan */ }
   Logger.log(pesan);
   return pesan;
 }
@@ -192,12 +193,57 @@ function pasangTrigger_() {
 
 /** Dijalankan otomatis tiap jam. Tugas latar tiap modul ditulis di properti `tugasPerJam` modul itu. */
 function tugasPerJam() {
-  try { batasiFrekuensi_('tugasPerJam', 600); } catch (e) { return; }
+  var segera = prop_('SEGERA');
+  if (segera) { prop_('SEGERA', null); hapusTriggerSekali_(); }     // putaran lanjutan / permintaan dari panel
+  else { try { batasiFrekuensi_('tugasPerJam', 600); } catch (e) { return; } }
+  var mulai = Date.now();
+  prop_('TUGAS_TERAKHIR', String(mulai));
   daftarModul_().forEach(function (m) {
     if (typeof m.tugasPerJam === 'function') {
       try { m.tugasPerJam(); } catch (e) { console.error('tugasPerJam ' + m.id + ': ' + pesanError_(e)); }
     }
   });
+  catatPemakaian_(Date.now() - mulai);
+}
+
+/* ---------- Sinkron lanjutan (berantai) ---------- */
+
+/** Menit trigger yang terpakai hari ini (jatah akun Gmail ±90 menit/hari). */
+function pemakaianHariIni_() {
+  var p = String(prop_('PEMAKAIAN') || '').split('|');
+  return p[0] === hariIni_() ? Number(p[1]) || 0 : 0;
+}
+function catatPemakaian_(ms) {
+  prop_('PEMAKAIAN', hariIni_() + '|' + Math.round((pemakaianHariIni_() + ms / 60000) * 10) / 10);
+}
+
+/**
+ * Jalankan tugasPerJam sekali lagi ±1 menit dari sekarang (lewat trigger, memakai izin pemilik).
+ * Dipakai bila antrean belum habis atau tombol panel butuh izin yang belum dimiliki web app.
+ * false bila jatah harian hampir habis.
+ */
+function jadwalkanSegera_(alasan) {
+  if (pemakaianHariIni_() > (CONFIG.SINKRON_LANJUTAN_MENIT_HARI || 60)) return false;
+  var id = prop_('SEGERA_ID');
+  var ada = id && ScriptApp.getProjectTriggers().some(function (t) { return t.getUniqueId && t.getUniqueId() === id; });
+  if (!ada) {
+    var t = ScriptApp.newTrigger('tugasPerJam').timeBased().after(60 * 1000).create();
+    prop_('SEGERA_ID', t.getUniqueId());
+    prop_('SEGERA_WAKTU', String(Date.now()));
+  }
+  prop_('SEGERA', alasan || '1');
+  return true;
+}
+function hapusTriggerSekali_() {
+  var id = prop_('SEGERA_ID');
+  prop_('SEGERA_ID', null);
+  if (!id) return;
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getUniqueId && t.getUniqueId() === id) ScriptApp.deleteTrigger(t); });
+}
+/** true bila putaran latar yang dijadwalkan >5 menit lalu ternyata tidak pernah berjalan (biasanya izin belum diberikan). */
+function latarMacet_() {
+  var dijadwal = Number(prop_('SEGERA_WAKTU') || 0), jalan = Number(prop_('TUGAS_TERAKHIR') || 0);
+  return !!(prop_('SEGERA') && dijadwal && jalan < dijadwal && Date.now() - dijadwal > 5 * 60 * 1000);
 }
 
 /** Menu di Google Sheet. */

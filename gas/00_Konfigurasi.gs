@@ -49,7 +49,10 @@ var CONFIG = {
   KAS_AKUN_DONASI: 'DON',
   KAS_AKUN_DONASI_PROGRAM: 'DON-PRG',
 
-  BATAS_WAKTU_MS: 4.5 * 60 * 1000,
+  BATAS_WAKTU_MS: 5 * 60 * 1000,
+  // Sinkron lanjutan otomatis (1 menit kemudian) selama masih ada antrean artikel/video.
+  // Akun Gmail punya jatah total trigger ±90 menit/hari; lanjutan berhenti bila pemakaian hari itu > batas ini.
+  SINKRON_LANJUTAN_MENIT_HARI: 60,
 
   // Ukuran maksimum bukti transfer (byte)
   MAKS_BUKTI: 5 * 1024 * 1024
