@@ -55,9 +55,20 @@
     b.remove();
     if (!j.ok) { baris('gagal', 'Apps Script menjawab dengan galat', esc(j.error)); return; }
     baris('ok', 'Terhubung (' + (Date.now() - mulai) + ' ms)', 'Nama: <b>' + esc(j.data.nama || '(belum diisi)') + '</b><br>Modul aktif: ' + esc((j.data.modul || []).join(', ')));
-    return fetch(url + '?action=bootstrap&_=' + Date.now()).then(function (r) { return r.json(); }).then(function (k) {
-      baris(k.ok ? 'ok' : 'gagal', 'Data website', k.ok ? 'Pengaturan, menu, dan kategori terbaca.' : esc(k.error));
-    });
+    // Ukur kecepatan data utama (dua kali: kedua kalinya harus cepat karena dari cache server)
+    var ukur = function (aksi, ke) {
+      var t = Date.now();
+      return fetch(url + '?action=' + aksi).then(function (r) { return r.json(); }).then(function (k) {
+        var total = Date.now() - t;
+        var lambat = total > 8000;
+        baris(!k.ok ? 'gagal' : lambat ? 'gagal' : 'ok', 'Data ' + aksi + (ke ? ' (ulang)' : ''),
+          k.ok ? 'Total ' + (total / 1000).toFixed(1) + ' detik · dihitung server ' + ((k.ms || 0) / 1000).toFixed(1) + ' detik · ' +
+            (k.cache ? 'dari cache' : 'dihitung ulang') + (lambat ? '<br>Lambat. Bila "dihitung server" kecil tetapi total besar, Google sedang lambat menyalakan web app (biasa ±3–8 detik pada akses pertama).' : '')
+          : esc(k.error));
+      });
+    };
+    return ukur('bootstrap', 0).then(function () { return ukur('beranda', 0); })
+      .then(function () { return ukur('bootstrap', 1); }).then(function () { return ukur('beranda', 1); });
   }).catch(function (e) {
     b.remove();
     if (e.status === 404) baris('gagal', 'HTTP 404 dari Google', 'Deployment tidak ditemukan/diarsipkan, atau aksesnya bukan "Siapa saja". Ikuti langkah di bawah.');

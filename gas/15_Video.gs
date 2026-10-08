@@ -210,7 +210,10 @@ MODUL.video = {
   alat: [
     {
       id: 'sinkron_video', sheet: 'SumberVideo', label: 'Sinkron sekarang', gaya: 'utama',
-      run: function (ids) { var h = sinkronVideo_(ids && ids.length ? ids : null); return { pesan: h.ringkas, tabel: h.detail }; }
+      run: function (ids) {
+        var h = sinkronVideo_(ids && ids.length ? ids : null);
+        return { pesan: h.ringkas, tabel: h.detail, url: h.url || '', labelUrl: 'Beri izin YouTube' };
+      }
     },
     {
       id: 'tayangkan_v', sheet: 'Video', label: 'Tayangkan', perluPilih: true,
@@ -402,6 +405,7 @@ function sinkronVideo_(ids, opsi) {
       if (Date.now() > ctx.batas) { detail.push({ sumber: label, hasil: 'Menyusul pada sinkron berikutnya (batas waktu).' }); return; }
       try {
         var h = sinkronSumberVideo_(s, ctx);
+        if (['nama', 'foto', 'feed_id'].some(function (k) { return h.ubah[k] !== undefined && String(h.ubah[k]) !== String(s[k] || ''); })) ctx.berubah = true;
         h.ubah.id = s.id;
         ts.set(h.ubah);
         label = h.ubah.nama || label;
@@ -417,34 +421,42 @@ function sinkronVideo_(ids, opsi) {
     ctx.tv.simpan();
     ctx.tp.simpan();
     ts.simpan();
-    naikkanVersiCache();
+    if (ctx.berubah) naikkanVersiCache();     // cache website hanya dikosongkan bila katalog berubah
   } finally {
     lock.releaseLock();
   }
   var ringkas = detail.length ? 'Sinkron selesai untuk ' + detail.length + ' sumber.' : 'Belum ada channel/playlist aktif.';
   var jenis = ctx && ctx.apiGagal ? jenisGagalApi_(ctx.apiGagal) : '';
   // catat apakah sinkron latar belakang (izin pemilik) sudah bisa memakai YouTube API
+  var tautanIzin = '';
   if (!dariPanel && ctx) {
-    if (jenis === 'izin') prop_('YT_IZIN_LATAR', 'gagal');
-    else if (ctx.api) prop_('YT_IZIN_LATAR', null);
+    if (jenis === 'izin') { prop_('YT_IZIN_LATAR', 'gagal'); urlIzinYoutube_(); }
+    else if (ctx.api) { prop_('YT_IZIN_LATAR', null); prop_('YT_IZIN_URL', null); }
   }
-  if (jenis === 'izin' && dariPanel && prop_('YT_IZIN_LATAR') === 'gagal') {
-    ringkas = 'Video terbaru (±15 per channel) sudah masuk. Untuk semua video & playlist, izin YouTube belum tercantum di proyek Apps Script. ' +
-      'Sekali saja: tempel ulang appsscript.json dari folder pasang/ di paket terbaru, lalu pilih perbaruiSistem › Jalankan › Izinkan.';
-  } else if (jenis === 'izin' && dariPanel && typeof jadwalkanSegera_ === 'function') {
+  if (jenis === 'izin' && dariPanel && typeof jadwalkanSegera_ === 'function') {
+    // Selalu jadwalkan sinkron lengkap di latar belakang (memakai izin akun pemilik)
     var macet = latarMacet_();
     prop_('VIDEO_PAKSA', '1');
     jadwalkanSegera_('video');
-    ringkas = 'Video terbaru (±15 per channel) sudah masuk. ' + (macet
-      ? 'Sinkron lengkap di latar belakang sebelumnya belum berjalan — biasanya karena izin belum diberikan. ' +
-        'Sekali saja: di editor Apps Script pilih fungsi perbaruiSistem › Jalankan › Izinkan.'
-      : 'Sinkron lengkap (semua video & playlist) berjalan otomatis di latar belakang dalam 1–3 menit; muat ulang tabel sesudahnya.');
+    if (prop_('YT_IZIN_LATAR') === 'gagal') {
+      tautanIzin = prop_('YT_IZIN_URL') || '';
+      ringkas = 'Video terbaru (±15 per channel) sudah masuk. Untuk semua video & playlist, izin YouTube di akun pemilik belum dicentang. ' +
+        (tautanIzin
+          ? 'Klik tombol "Beri izin YouTube" di bawah (pakai akun Google pemilik), centang izin YouTube atau "Pilih semua", lalu Lanjutkan. ' +
+            'Sesudahnya sinkron lengkap berjalan sendiri di latar belakang dalam 1–3 menit.'
+          : 'Di editor Apps Script jalankan perbaruiSistem — Log eksekusi akan memberi tautan untuk mencentang izin YouTube.');
+    } else {
+      ringkas = 'Video terbaru (±15 per channel) sudah masuk. ' + (macet
+        ? 'Sinkron lengkap di latar belakang sebelumnya belum berjalan — biasanya karena izin belum diberikan. ' +
+          'Sekali saja: di editor Apps Script pilih fungsi perbaruiSistem › Jalankan › Izinkan (centang "Pilih semua").'
+        : 'Sinkron lengkap (semua video & playlist) berjalan otomatis di latar belakang dalam 1–3 menit; muat ulang tabel sesudahnya.');
+    }
   } else if (jenis) {
     ringkas += ' ' + jelaskanGagalApi_(ctx.apiGagal);
   }
   // Masih ada video lama yang belum terimpor → lanjutkan 1 menit lagi, tidak menunggu sejam
   if (ctx && ctx.lanjut && typeof jadwalkanSegera_ === 'function') jadwalkanSegera_('video');
-  return { ringkas: ringkas, detail: detail };
+  return { ringkas: ringkas, detail: detail, url: tautanIzin };
 }
 
 /** Satu baris SumberVideo. Mengembalikan kolom yang perlu diperbarui + ringkasan. */
@@ -522,20 +534,47 @@ function cekYoutube_() {
   if (!api) return 'YouTube: memakai RSS (±15 video terbaru per channel). Untuk semua video & playlist, tambahkan Layanan › YouTube Data API v3.';
   try {
     api.Channels.list('id', { id: 'UC_x5XG1OV2P6uZZ5FSM9Ttw' });
+    prop_('YT_IZIN_LATAR', null);
+    prop_('YT_IZIN_URL', null);
     return 'YouTube Data API: siap — semua video & playlist channel akan diambil.';
   } catch (e) {
-    var j = jenisGagalApi_(pesanError_(e));
-    if (j === 'izin') return 'YouTube: izin belum tercantum. Tempel ulang appsscript.json dari folder pasang/ di paket terbaru, simpan, lalu jalankan perbaruiSistem lagi.';
-    return 'YouTube: ' + jelaskanGagalApi_(pesanError_(e));
+    if (jenisGagalApi_(pesanError_(e)) !== 'izin') return 'YouTube: ' + jelaskanGagalApi_(pesanError_(e));
+    var url = urlIzinYoutube_();
+    if (url) {
+      return 'YouTube: izin "Lihat akun YouTube Anda" belum dicentang. Layar izin Google kini memakai kotak centang per izin, dan kotak YouTube terlewat.\n' +
+        'Buka tautan ini dengan akun Google pemilik, centang izin YouTube (atau "Pilih semua"), lalu klik Lanjutkan:\n' + url +
+        '\nSesudahnya jalankan perbaruiSistem sekali lagi — harus muncul "YouTube Data API: siap".';
+    }
+    return 'YouTube: izin belum tercantum. Tempel ulang appsscript.json dari folder pasang/ di paket terbaru, simpan, lalu jalankan perbaruiSistem lagi. ' +
+      'Bila tetap begini: buka myaccount.google.com/connections, hapus akses proyek Apps Script ini, lalu jalankan perbaruiSistem dan pilih "Pilih semua" di layar izin.';
   }
+}
+
+/**
+ * Tautan Google untuk memberi izin YouTube yang belum dicentang (layar izin per kotak centang).
+ * Kosong bila izin sudah ada atau tidak bisa diperiksa. Disimpan agar bisa ditampilkan di panel.
+ */
+function urlIzinYoutube_() {
+  var lingkup = 'https://www.googleapis.com/auth/youtube.readonly', url = '';
+  try {
+    var info = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL, [lingkup]);
+    if (info.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED) url = info.getAuthorizationUrl() || '';
+  } catch (e) {
+    try {   // runtime lama: periksa semua izin proyek
+      var semua = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
+      if (semua.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED) url = semua.getAuthorizationUrl() || '';
+    } catch (x) { /* abaikan */ }
+  }
+  prop_('YT_IZIN_URL', url || null);
+  return url;
 }
 
 /** Galat YouTube Data API → penjelasan + langkah perbaikan yang bisa dilakukan admin. */
 function jelaskanGagalApi_(m) {
   m = String(m || '');
   if (jenisGagalApi_(m) === 'izin') {
-    return 'Izin YouTube belum diberikan. Sekali saja: tempel ulang appsscript.json dari folder pasang/ di paket terbaru, ' +
-      'lalu di editor Apps Script pilih perbaruiSistem › Jalankan › Izinkan.';
+    return 'Izin YouTube di akun pemilik belum dicentang. Di editor Apps Script jalankan perbaruiSistem: Log eksekusi memberi tautan ' +
+      'untuk mencentangnya (atau tekan Sinkron di panel lalu tombol "Beri izin YouTube").';
   }
   if (/has not been used|is disabled|accessNotConfigured|SERVICE_DISABLED/i.test(m)) {
     return 'YouTube Data API belum aktif. Di editor Apps Script: Layanan (+) › YouTube Data API v3 › Tambahkan, lalu jalankan perbaruiSistem.';
@@ -697,7 +736,7 @@ function sinkronPlaylistKanal_(k, s, ctx, bawaan) {
   }
   // playlist yang sudah dihapus dari channel → dikosongkan (hilang dari website)
   ctx.tp.objek().forEach(function (x) {
-    if (x.kanal_id === k.id && x.sumber === s.id && !dilihat[x.playlist_id] && x.isi) ctx.tp.set({ playlist_id: x.playlist_id, isi: '', jumlah: 0 });
+    if (x.kanal_id === k.id && x.sumber === s.id && !dilihat[x.playlist_id] && x.isi) { ctx.tp.set({ playlist_id: x.playlist_id, isi: '', jumlah: 0 }); ctx.berubah = true; }
   });
   res.selesai = true;
   return res;
@@ -718,6 +757,7 @@ function simpanPlaylist_(p, s, ctx) {
   }
   if (!lama || !lama.judul || lama.judul === lama.judul_yt) row.judul = p.judul;
   if (!lama) { row.tampil = true; row.urutan = 100; }
+  if (!lama || ['isi', 'judul', 'gambar', 'kanal_id'].some(function (k) { return row[k] !== undefined && String(row[k]) !== String(lama[k] || ''); })) ctx.berubah = true;
   ctx.tp.set(row);
 }
 
@@ -731,6 +771,7 @@ function imporVideo_(items, bawaan, ctx) {
       if (!lama.kanal_id && it.kanal_id && lama.id) {
         ctx.tv.set({ id: lama.id, kanal_id: it.kanal_id, kanal: lama.kanal || it.kanal });
         lama.kanal_id = it.kanal_id;
+        ctx.berubah = true;
       }
       return;
     }
@@ -742,6 +783,7 @@ function imporVideo_(items, bawaan, ctx) {
     ctx.tv.set(row);
     ctx.ada[it.video_id] = row;
     baru++;
+    ctx.berubah = true;
   });
   return baru;
 }

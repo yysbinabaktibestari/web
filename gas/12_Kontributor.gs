@@ -186,7 +186,7 @@ function sinkronKontributor_(ids) {
     var daftar = tk.objek().filter(function (k) {
       return k.sumber_url && (!ids || ids.indexOf(k.id) >= 0);
     }).sort(function (a, b) { return String(a.terakhir_sinkron).localeCompare(String(b.terakhir_sinkron)); });
-    var kat = petaKategori_(), adaAntrean = false;
+    var kat = petaKategori_(), adaAntrean = false, berubah = false;
     for (var i = 0; i < daftar.length; i++) {
       if (Date.now() - mulai > CONFIG.BATAS_WAKTU_MS) {
         detail.push({ kontributor: '(sisanya)', hasil: 'Dilanjutkan otomatis ±1 menit lagi (batas waktu).' });
@@ -200,6 +200,7 @@ function sinkronKontributor_(ids) {
         catatan = 'OK · ' + h.baru + ' baru, ' + h.ubah + ' diperbarui' + (h.hilang ? ', ' + h.hilang + ' disembunyikan' : '') +
           (h.tertunda ? ', ' + h.tertunda + ' menyusul' : '') + (h.arsip ? ' · ' + h.arsip : '');
         if (h.tertunda || h.arsipLanjut) adaAntrean = true;
+        if (h.baru || h.ubah || h.hilang) berubah = true;
         if (h.arsipLanjut !== undefined) tk.set({ id: k.id, arsip_lanjut: h.arsipLanjut || 'selesai' });
       } catch (e) {
         catatan = 'Gagal: ' + pesanError_(e);
@@ -209,7 +210,7 @@ function sinkronKontributor_(ids) {
     }
     ta.simpan();
     tk.simpan();
-    naikkanVersiCache();
+    if (berubah) naikkanVersiCache();     // cache website hanya dikosongkan bila ada tulisan berubah
   } finally {
     lock.releaseLock();
   }

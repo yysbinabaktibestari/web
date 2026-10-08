@@ -23,7 +23,41 @@ var API = (function () {
     try { sessionStorage.setItem(k, JSON.stringify({ t: Date.now(), d: d })); } catch (e) { /* penuh: abaikan */ }
   }
 
+  /* Salinan di perangkat pengunjung (localStorage, maks. 7 hari): kunjungan berikutnya langsung tampil,
+     data terbaru diambil diam-diam lalu halaman diperbarui bila ada perubahan. */
+  var SIMPAN_HARI = 7;
+  function bacaLokal(k) {
+    try {
+      var v = JSON.parse(localStorage.getItem(k) || 'null');
+      if (v && v.t > Date.now() - SIMPAN_HARI * 864e5) return v;
+    } catch (e) {}
+    return null;
+  }
+  function tulisLokal(k, d) {
+    try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), d: d })); }
+    catch (e) {   // penuh: buang salinan lama lalu coba sekali lagi
+      try {
+        Object.keys(localStorage).filter(function (x) { return x.indexOf('api:') === 0; }).forEach(function (x) { localStorage.removeItem(x); });
+        localStorage.setItem(k, JSON.stringify({ t: Date.now(), d: d }));
+      } catch (x) { /* abaikan */ }
+    }
+  }
+  try {   // buang salinan dari versi website sebelumnya
+    Object.keys(localStorage).forEach(function (x) { if (x.indexOf('api:') === 0 && x.indexOf('api:' + KONFIG.VERSI + ':') !== 0) localStorage.removeItem(x); });
+  } catch (e) {}
+
+  var jalan = {};        // permintaan yang sedang berjalan (agar tidak dobel)
+  var dipakai = null;    // kunci data yang dipakai halaman aktif (diisi App)
+
   function tunggu(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /** fetch dengan batas waktu (server Apps Script kadang lambat saat "bangun"). */
+  function fetchBatas(url, opsi, ms) {
+    if (typeof AbortController === 'undefined') return fetch(url, opsi);
+    var ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, ms);
+    return fetch(url, Object.assign({}, opsi || {}, { signal: ac.signal })).then(function (r) { clearTimeout(t); return r; },
+      function (e) { clearTimeout(t); if (e && e.name === 'AbortError') { var x = new Error('Waktu tunggu habis (' + Math.round(ms / 1000) + ' detik)'); x.batasWaktu = true; throw x; } throw e; });
+  }
 
   /** Penjelasan teknis untuk admin (tampil di console browser & halaman cek.html). */
   function diagnosa(e) {
@@ -34,9 +68,12 @@ var API = (function () {
     return String(e.message || e);
   }
 
-  /** fetch + 1x coba ulang untuk gangguan sementara. Galat jaringan diganti pesan ramah pengunjung. */
+  /**
+   * fetch + 1x coba ulang untuk gangguan sementara. Percobaan pertama dibatasi 25 detik; percobaan kedua
+   * 50 detik (biasanya cepat karena server sudah selesai menyiapkan cache). Galat diganti pesan ramah pengunjung.
+   */
   function ambil(url, opsi, ke) {
-    return fetch(url, opsi).then(function (r) {
+    return fetchBatas(url, opsi, ke ? 50000 : 25000).then(function (r) {
       if (!r.ok) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
       return r.json();
     }).catch(function (e) {
@@ -53,19 +90,44 @@ var API = (function () {
     return j.data;
   }
 
+  function ambilData(aksi, params, k) {
+    if (jalan[k]) return jalan[k];
+    var p = ambil(urlAksi(aksi, params)).then(hasil).then(function (d) {
+      tulisCache(k, d);
+      tulisLokal(k, d);
+      return d;
+    });
+    jalan[k] = p;
+    var lepas = function () { delete jalan[k]; };
+    p.then(lepas, lepas);
+    return p;
+  }
+
   /** GET data. opsi.segar = abaikan cache browser. */
   function get(aksi, params, opsi) {
     if (!KONFIG.API_URL) return Demo.get(aksi, params || {});
     var k = kunciCache(aksi, params);
+    if (dipakai) dipakai[k] = aksi;
     if (!(opsi && opsi.segar)) {
       var c = bacaCache(k);
       if (c) return Promise.resolve(c);
+      var l = bacaLokal(k);
+      if (l) {
+        // tampilkan salinan terakhir sekarang, perbarui diam-diam
+        if (!jalan[k]) {
+          var lama = JSON.stringify(l.d);
+          ambilData(aksi, params, k).then(function (d) {
+            if (JSON.stringify(d) !== lama) window.dispatchEvent(new CustomEvent('api:segar', { detail: { kunci: k, aksi: aksi } }));
+          }).catch(function () { /* tetap pakai salinan lama */ });
+        }
+        return Promise.resolve(l.d);
+      }
     }
-    return ambil(urlAksi(aksi, params)).then(hasil).then(function (d) {
-      tulisCache(k, d);
-      return d;
-    });
+    return ambilData(aksi, params, k);
   }
+
+  /** App: mulai/ambil daftar kunci data yang dipakai halaman aktif. */
+  function lacak(obj) { dipakai = obj; }
 
   /** POST data (tanpa preflight CORS: body dikirim sebagai text/plain). */
   function post(aksi, body) {
@@ -78,5 +140,5 @@ var API = (function () {
     return KONFIG.API_URL ? urlAksi('feed', Object.assign({ format: format || 'rss' }, params || {})) : '';
   }
 
-  return { get: get, post: post, feed: feed, url: urlAksi, diagnosa: diagnosa };
+  return { get: get, post: post, feed: feed, url: urlAksi, diagnosa: diagnosa, lacak: lacak, kunci: kunciCache };
 })();

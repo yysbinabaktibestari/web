@@ -13,7 +13,7 @@ var CONFIG = {
   ZONA_WAKTU: 'Asia/Jakarta',
 
   // Lama cache data publik (detik). Setiap simpan dari admin otomatis menyegarkan cache.
-  CACHE_DETIK: 300,
+  CACHE_DETIK: 3600,
 
   // ---- Kontributor & mirroring ----
   // Status kontributor baru (termasuk yang mendaftar sendiri lewat website)
@@ -61,10 +61,21 @@ var CONFIG = {
 var STATUS = { DRAF: 'Draf', TAYANG: 'Tayang', TIDAK: 'Tidak tayang' };
 
 /** Baca / tulis Script Properties. */
+/**
+ * Script Properties. Bacaan memakai salinan yang diambil sekali (berlaku 15 detik) agar setiap
+ * permintaan website cukup satu kali akses ke layanan Properties, bukan puluhan.
+ */
+var PROP_MEMO_ = null, PROP_MEMO_T_ = 0;
 function prop_(kunci, nilai) {
   var p = PropertiesService.getScriptProperties();
-  if (nilai === undefined) return p.getProperty(kunci);
-  if (nilai === null) { p.deleteProperty(kunci); return null; }
+  if (nilai === undefined) {
+    if (!PROP_MEMO_ || Date.now() - PROP_MEMO_T_ > 15000) { PROP_MEMO_ = p.getProperties(); PROP_MEMO_T_ = Date.now(); }
+    return Object.prototype.hasOwnProperty.call(PROP_MEMO_, kunci) ? PROP_MEMO_[kunci] : null;
+  }
+  if (nilai === null) { p.deleteProperty(kunci); if (PROP_MEMO_) delete PROP_MEMO_[kunci]; return null; }
   p.setProperty(kunci, String(nilai));
+  if (PROP_MEMO_) PROP_MEMO_[kunci] = String(nilai);
   return nilai;
 }
+/** Baca langsung tanpa salinan (untuk nilai yang bisa diubah eksekusi lain, mis. versi cache). */
+function propSegar_(kunci) { return PropertiesService.getScriptProperties().getProperty(kunci); }

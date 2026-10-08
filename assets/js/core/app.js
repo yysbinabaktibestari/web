@@ -14,7 +14,7 @@
 var App = (function () {
   'use strict';
 
-  var modul = {}, rute = [], data = {}, token = 0, galatAwal = '', langkah = 0, saatPindahCb = [];
+  var modul = {}, rute = [], data = {}, token = 0, galatAwal = '', langkah = 0, saatPindahCb = [], kunciHalaman = {};
   var V = '?v=' + encodeURIComponent(KONFIG.VERSI || '1');
   function $(id) { return document.getElementById(id); }
 
@@ -45,13 +45,30 @@ var App = (function () {
         return U.muatSkrip('assets/js/modules/' + id + '.js' + V).catch(function (e) { console.warn(e.message); });
       }));
     }).then(function () {
+      // Data beranda diminta bersamaan dengan data awal (tidak bergantian) agar halaman depan lebih cepat
+      var h = location.hash || '';
+      if (KONFIG.API_URL && (h === '' || h === '#' || h === '#/')) API.get('beranda').catch(function () {});
       return API.get('bootstrap').catch(function (e) { galatAwal = e.message; return {}; });
     }).then(function (b) {
       data = b || {};
       data.situs = data.situs || {};
       antre.sort(function (a, b) { return KONFIG.MODUL.indexOf(a.id) - KONFIG.MODUL.indexOf(b.id); }).forEach(daftar);
       kerangka();
-      window.addEventListener('hashchange', navigasi);
+      window.addEventListener('hashchange', function () { navigasi(); });
+      // Data terbaru tiba setelah salinan lama ditampilkan → perbarui tampilan tanpa mengganggu pembaca
+      window.addEventListener('api:segar', function (ev) {
+        var d = ev.detail || {};
+        if (d.aksi === 'bootstrap') {
+          API.get('bootstrap').then(function (b) {
+            if (!b) return;
+            data = b; data.situs = data.situs || {}; galatAwal = '';
+            kerangka();
+            navigasi(true);
+          });
+        } else if (kunciHalaman[d.kunci]) {
+          navigasi(true);
+        }
+      });
       navigasi();
     });
   }
@@ -63,7 +80,7 @@ var App = (function () {
     document.title = nama || 'Beranda';
     var meta = document.querySelector('meta[name=description]');
     if (meta && s.deskripsi) meta.setAttribute('content', s.deskripsi);
-    if (data.feed) {
+    if (data.feed && !document.querySelector('link[rel=alternate][type="application/rss+xml"]')) {
       var l = document.createElement('link');
       l.rel = 'alternate'; l.type = 'application/rss+xml'; l.title = nama || 'RSS'; l.href = data.feed;
       document.head.appendChild(l);
@@ -140,7 +157,9 @@ var App = (function () {
     return p;
   }
 
-  function navigasi() {
+  /** diam = true: perbarui halaman yang sama dengan data terbaru (tanpa spinner, posisi gulir tetap). */
+  function navigasi(diam) {
+    diam = diam === true;
     var h = location.hash || '';
     if (h && h.indexOf('#/') !== 0) {           // tautan jangkar biasa, mis. #app
       var t = document.getElementById(h.slice(1));
@@ -150,7 +169,7 @@ var App = (function () {
     // bersihkan sisa halaman sebelumnya (mis. tema mode baca, pendengar scroll)
     var cb = saatPindahCb; saatPindahCb = [];
     cb.forEach(function (f) { try { f(); } catch (e) { /* abaikan */ } });
-    langkah++;
+    if (!diam) langkah++;
     var isi = h.replace(/^#\/?/, '').split('?');
     var path = isi[0].split('/').filter(Boolean);
     var query = {};
@@ -165,26 +184,28 @@ var App = (function () {
       if (aktif) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
 
-    var app = $('app'), wadah = document.createElement('div');
-    app.innerHTML = '';
-    app.appendChild(wadah);
+    var app = $('app'), wadah = document.createElement('div'), gulir = window.scrollY;
+    if (!diam) { app.innerHTML = ''; app.appendChild(wadah); }
     var t2 = ++token;
+    kunciHalaman = {};
+    API.lacak && API.lacak(kunciHalaman);
     if (galatAwal && !data.situs.nama_yayasan) { wadah.innerHTML = galat(new Error(galatAwal)); return; }
     if (!r) {
       judul('Halaman tidak ditemukan');
       wadah.innerHTML = '<div class="wadah kosong"><h1 class="display" style="font-size:40px;margin-bottom:12px">Halaman tidak ditemukan</h1><p><a class="btn btn-utama" href="#/">Kembali ke beranda</a></p></div>';
       return;
     }
-    wadah.innerHTML = muat();
+    if (!diam) wadah.innerHTML = muat();
     Promise.resolve().then(function () { return r.render(wadah, params, query); })
-      .catch(function (e) { if (t2 === token) wadah.innerHTML = galat(e); })
+      .catch(function (e) { if (t2 === token && !diam) wadah.innerHTML = galat(e); else if (diam) throw e; })
       .then(function () {
         if (t2 !== token) return;
+        if (diam) { app.innerHTML = ''; app.appendChild(wadah); window.scrollTo(0, gulir); return; }
         var tujuan = query.bagian && document.getElementById(query.bagian);
         if (tujuan) tujuan.scrollIntoView({ behavior: 'smooth', block: 'start' });
         else window.scrollTo(0, 0);
-      });
-    app.focus({ preventScroll: true });
+      }, function () { /* pembaruan diam gagal: tampilan lama tetap */ });
+    if (!diam) app.focus({ preventScroll: true });
   }
 
   /* ---------------- Helper tampilan ---------------- */
@@ -193,7 +214,10 @@ var App = (function () {
     var nama = data.situs.nama_yayasan || '';
     document.title = t ? t + (nama ? ' · ' + nama : '') : (nama || 'Beranda');
   }
-  function muat() { return '<div class="muat" role="status" aria-label="Memuat"><span></span></div>'; }
+  function muat() {
+    return '<div class="muat" role="status" aria-label="Memuat"><span></span>' +
+      '<p class="muat-teks">Menyiapkan data… pemuatan pertama bisa memakan 10–20 detik.</p></div>';
+  }
   function galat(e) {
     return '<div class="wadah kosong"><p class="galat" style="display:inline-block"' + (e && e.teknis ? ' title="' + U.esc(e.teknis) + '"' : '') + '>' + U.esc((e && e.message) || 'Terjadi kesalahan.') +
       '</p><p><button class="btn btn-biru-garis btn-kecil" type="button" onclick="App.ulang()">Coba lagi</button></p></div>';

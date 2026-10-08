@@ -62,19 +62,26 @@ function keSel_(v, t) {
 }
 
 /** Baca seluruh sheet sebagai array objek. */
+/** Isi sheet yang sudah dibaca pada eksekusi ini (dikosongkan setiap ada penulisan). */
+var MEMO_TABEL_ = {};
+function lupakanTabel_() { MEMO_TABEL_ = {}; }
+
 function bacaTabel_(nama) {
-  var def = sheetDef_(nama);
-  var tipe = tipeKolom_(def);
-  var v = sheet_(nama).getDataRange().getValues();
-  var header = v.shift() || [];
-  var out = [];
-  v.forEach(function (r) {
-    if (r.join('') === '') return;
-    var o = {};
-    header.forEach(function (h, j) { if (h) o[h] = normalNilai_(r[j], tipe[h]); });
-    out.push(o);
-  });
-  return out;
+  if (!MEMO_TABEL_[nama]) {
+    var def = sheetDef_(nama);
+    var tipe = tipeKolom_(def);
+    var v = sheet_(nama).getDataRange().getValues();
+    var header = v.shift() || [];
+    var out = [];
+    v.forEach(function (r) {
+      if (r.join('') === '') return;
+      var o = {};
+      header.forEach(function (h, j) { if (h) o[h] = normalNilai_(r[j], tipe[h]); });
+      out.push(o);
+    });
+    MEMO_TABEL_[nama] = out;
+  }
+  return MEMO_TABEL_[nama].map(function (o) { return Object.assign({}, o); });
 }
 
 /** Hapus kolom privat sebelum dikirim ke publik. */
@@ -90,6 +97,7 @@ function publikSaja_(nama, rows) {
 
 /** Tambah satu baris di akhir sheet (cepat, tanpa memuat seluruh sheet). */
 function tambahBaris_(nama, obj) {
+  lupakanTabel_();
   var def = sheetDef_(nama);
   var tipe = tipeKolom_(def);
   var sh = sheet_(nama);
@@ -163,6 +171,7 @@ Tabel_.prototype.set = function (obj) {
 };
 
 Tabel_.prototype.simpan = function () {
+  lupakanTabel_();
   var self = this, w = this.header.length;
   var diubah = Object.keys(this.ubah).map(Number).filter(function (i) { return i < self.panjangAwal; });
   if (diubah.length > 25) {
@@ -191,6 +200,7 @@ Tabel_.prototype.gantiKunci = function (lama, baru) {
 
 /** Hapus baris berdasarkan daftar kunci. Mengembalikan jumlah terhapus. */
 function hapusBaris_(nama, kunciList) {
+  lupakanTabel_();
   var def = sheetDef_(nama);
   var sh = sheet_(nama);
   var v = sh.getDataRange().getValues();
@@ -205,6 +215,7 @@ function hapusBaris_(nama, kunciList) {
 
 /** Buat / lengkapi sheet sesuai definisi (kolom baru ditambah di kanan, data lama aman). */
 function pastikanSheet_(def) {
+  lupakanTabel_();
   var b = buku_();
   var sh = b.getSheetByName(def.nama);
   var baru = !sh;

@@ -47,7 +47,9 @@ function cariAksi_(nama, metode) {
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
-  try { pastikanStruktur_(); } catch (x) { console.error('struktur: ' + pesanError_(x)); }
+  var t0 = Date.now();
+  // Pengunjung tidak menunggu: bila sinkron latar sedang memegang kunci, migrasi struktur ditunda
+  try { pastikanStruktur_(p.admin !== undefined ? 20000 : 0); } catch (x) { console.error('struktur: ' + pesanError_(x)); }
   if (p.admin !== undefined) return halamanAdmin_();
   var aksi = p.action || 'info';
   try {
@@ -56,20 +58,21 @@ function doGet(e) {
     if (!a) throw new Error('Aksi tidak dikenal: ' + aksi);
     var run = typeof a === 'function' ? a : a.run;
     var detik = (typeof a === 'object' && a.cache !== undefined) ? a.cache : CONFIG.CACHE_DETIK;
+    CACHE_KENA_ = null;
     var data = detik
       ? dariCache_('get:' + aksi + ':' + kunciParam_(p), detik, function () { return run(p); })
       : run(p);
     if (data && typeof data.__csv === 'string') {
       return ContentService.createTextOutput(data.__csv).setMimeType(ContentService.MimeType.CSV);
     }
-    return keluaranJson_({ ok: true, data: data }, p.callback);
+    return keluaranJson_({ ok: true, data: data, ms: Date.now() - t0, cache: CACHE_KENA_ === true }, p.callback);
   } catch (err) {
     return keluaranJson_({ ok: false, error: pesanError_(err) }, p.callback);
   }
 }
 
 function doPost(e) {
-  try { pastikanStruktur_(); } catch (x) { console.error('struktur: ' + pesanError_(x)); }
+  try { pastikanStruktur_(3000); } catch (x) { console.error('struktur: ' + pesanError_(x)); }
   var body = {};
   try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (x) { body = {}; }
   var aksi = body.action || ((e && e.parameter) || {}).action;
@@ -112,16 +115,38 @@ function versiCache_() {
 
 /** Panggil setelah data berubah agar semua cache publik segar. */
 function naikkanVersiCache() {
-  var v = String(Number(prop_('CACHE_VER') || '1') + 1);
+  var v = String(Math.max(Number(propSegar_('CACHE_VER') || '1'), Number(prop_('CACHE_VER') || '1')) + 1);
   prop_('CACHE_VER', v);
   CacheService.getScriptCache().put('__ver', v, 21600);
   return v;
 }
 
+var CACHE_KENA_ = null;   // true = jawaban dari cache (untuk diagnosa di cek.html)
+
+/**
+ * Hitung ulang jawaban yang paling sering diminta (beranda dsb.) agar pengunjung berikutnya
+ * langsung mendapat cache, tidak menunggu server menghitung. Dipanggil dari trigger.
+ */
+function hangatkanCache_() {
+  var t0 = Date.now();
+  [{ action: 'bootstrap' }, { action: 'beranda' }, { action: 'artikel', halaman: '1' }, { action: 'video', halaman: '1' },
+   { action: 'kajian' }, { action: 'kontributor' }, { action: 'profil' }, { action: 'donasi' }].forEach(function (p) {
+    if (Date.now() - t0 > 60000) return;
+    try {
+      var a = cariAksi_(p.action, 'get');
+      if (!a) return;
+      var run = typeof a === 'function' ? a : a.run;
+      var detik = (typeof a === 'object' && a.cache !== undefined) ? a.cache : CONFIG.CACHE_DETIK;
+      if (detik) dariCache_('get:' + p.action + ':' + kunciParam_(p), detik, function () { return run(p); });
+    } catch (e) { console.error('hangatkan ' + p.action + ': ' + pesanError_(e)); }
+  });
+}
+
 function dariCache_(kunci, detik, fn) {
   var k = 'v' + versiCache_() + ':' + kunci;
   var hit = cacheBaca_(k);
-  if (hit !== null) { try { return JSON.parse(hit); } catch (x) { /* abaikan */ } }
+  if (hit !== null) { try { var d = JSON.parse(hit); if (CACHE_KENA_ === null) CACHE_KENA_ = true; return d; } catch (x) { /* abaikan */ } }
+  CACHE_KENA_ = false;
   var data = fn();
   cacheTulis_(k, JSON.stringify(data), detik);
   return data;
@@ -295,6 +320,8 @@ function gambarTerlindung_(u, paksa) {
   if (!id) return urlGambar_(u);
   var kunci = 'LINDUNG_' + id, ada = prop_(kunci);
   if (ada && !paksa) return ada;
+  var gagal = Number(prop_('LINDUNG_GAGAL_' + id) || 0);
+  if (!paksa && gagal && Date.now() - gagal < 6 * 3600 * 1000) return urlGambar_(u);   // jangan memperlambat pengunjung
   try {
     var url = simpanGambar_(thumbnailDrive_(id, 400), 'logo');
     prop_(kunci, url);
@@ -308,6 +335,7 @@ function gambarTerlindung_(u, paksa) {
     return url;
   } catch (e) {
     if (paksa) throw new Error('Logo belum bisa diproses (' + pesanError_(e) + '). Pastikan link mengarah ke file gambar di Google Drive akun yayasan.');
+    prop_('LINDUNG_GAGAL_' + id, String(Date.now()));
     try { publikkanGambar_(u); } catch (x) { /* abaikan */ }
     return urlGambar_(u);
   }

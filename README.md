@@ -23,7 +23,7 @@ Di proyek Apps Script hanya ada **dua file**: `appsscript.json` dan `Pemuat.gs` 
 3. **Hapus semua file kode lain** di editor (⋮ › Hapus), termasuk `Kode.gs` / file versi lama.
 4. **Setelan proyek** (ikon roda gigi) › centang *Tampilkan file manifes "appsscript.json"*. Ganti isi `appsscript.json` dengan `pasang/appsscript.json`.
 5. Buat file skrip **`Pemuat`**, tempel isi `pasang/Pemuat.gs`, simpan.
-6. Pilih fungsi **`perbaruiSistem`** › **Jalankan** › izinkan akses. Kode ditarik dari GitHub, sheet/folder/trigger disiapkan, dan akun login muncul di *Log eksekusi* (username **`admin`** + password awal, atau password lama bila pernah dipasang).
+6. Pilih fungsi **`perbaruiSistem`** › **Jalankan** › izinkan akses. Di layar izin Google yang berisi kotak centang, pilih **Pilih semua** — izin yang tidak dicentang (mis. YouTube) membuat fitur terkait tidak jalan; Log eksekusi akan memberi tautan untuk melengkapinya. Kode ditarik dari GitHub, sheet/folder/trigger disiapkan, dan akun login muncul di *Log eksekusi* (username **`admin`** + password awal, atau password lama bila pernah dipasang).
 7. **Terapkan › Kelola deployment** › ✎ pada deployment *Aplikasi web* › Versi: **Versi baru** · Jalankan sebagai: **Saya** · Yang memiliki akses: **Siapa saja** › Terapkan. (Belum ada deployment? **Terapkan › Deployment baru** › Aplikasi web, pengaturan sama.)
 8. URL web app (berakhiran `/exec`) harus sama dengan `API_URL` di `assets/js/config.js`. Bila berbeda, ubah file itu langsung di GitHub (ikon ✎). Panel admin: `URL/exec?admin`.
 
@@ -108,7 +108,7 @@ Atur bawaan di `00_Konfigurasi.gs`: `KONTRIBUTOR_STATUS_DEFAULT`, `ARTIKEL_KONTR
 
 **Mengaktifkan YouTube Data API (sekali):**
 1. Tempel ulang isi `pasang/appsscript.json` ke `appsscript.json` di editor Apps Script; di panel kiri **Layanan (+)** pastikan *YouTube Data API v3* tercantum (bila belum: pilih › Tambahkan).
-2. Jalankan `perbaruiSistem` dari editor → klik **Izinkan** (izin "lihat akun YouTube" = membaca data publik channel).
+2. Jalankan `perbaruiSistem` dari editor → **Izinkan**, dan pastikan kotak **"Lihat akun YouTube Anda"** tercentang (atau *Pilih semua*). Izin ini hanya untuk membaca data publik channel. Bila terlewat, Log eksekusi dan tombol *Sinkron sekarang* di panel memberi tautan **Beri izin YouTube** untuk mencentangnya.
 3. Lihat *Log eksekusi*: baris **"YouTube Data API: siap"** berarti beres. Bila tertulis *izin belum tercantum*, isi `appsscript.json` belum terganti — ulangi langkah 1.
 
 Tombol *Sinkron sekarang* di panel langsung memasukkan video terbaru, lalu **sinkron lengkap (semua video & playlist) berjalan otomatis di latar belakang** dalam 1–3 menit memakai izin dari langkah 2 — tidak perlu deploy ulang. Impor channel besar berlanjut sendiri tiap ±1 menit sampai selesai. Bila API belum aktif, video tetap masuk lewat RSS dan kolom *Hasil* menjelaskan langkah perbaikannya.
@@ -169,6 +169,7 @@ Modul dapat menambah: sheet + kolom (form admin dibuat otomatis), endpoint GET/P
 - Cara kerja pemuat: `perbaruiSistem` mengunduh zip repo, menggabungkan `gas/*.gs` + `Admin.html`, mengujinya di ruang terpisah (sintaks & fungsi wajib), lalu menyimpannya terkompresi di Script Properties (versi aktif + satu versi sebelumnya). Setiap permintaan memuat kode itu sekali. File yang tidak dipakai lagi di `gas/` cukup dikosongkan, jangan dihapus — unggahan lewat browser tidak menghapus file lama di GitHub.
 - Tanpa pemuat pun bisa: tempel semua isi `gas/` (+ `pasang/appsscript.json`) ke proyek Apps Script secara manual.
 
+- **Kecepatan**: jawaban server di-cache 1 jam dan otomatis disiapkan ulang oleh trigger setiap jam serta setelah data berubah, jadi pengunjung jarang menunggu server menghitung. Browser pengunjung menyimpan salinan hingga 7 hari: kunjungan berikutnya tampil seketika lalu diperbarui diam-diam. Permintaan pengunjung tidak pernah menunggu sinkron latar belakang. Halaman `cek.html` menampilkan lama muat, waktu hitung server, dan apakah jawaban berasal dari cache.
 - Putaran lanjutan otomatis berhenti bila pemakaian trigger hari itu > 60 menit (`SINKRON_LANJUTAN_MENIT_HARI`), menjaga jatah akun Gmail ±90 menit/hari; sisanya lanjut pada jadwal per jam.
 - Apps Script punya kuota harian (pengambilan URL, geocoding, durasi eksekusi; lihat halaman *Quotas for Google Services*). Data publik di-cache 5 menit di server dan di browser, dan hasil geocoding di-cache per area, sehingga pemakaian kuota hemat. Bila kuota geocoding habis, koordinat tetap tercatat tanpa nama kecamatan.
 - Gambar artikel disalin ke folder Drive publik `Gambar Artikel (publik)`; jangan ubah izin bagikannya.

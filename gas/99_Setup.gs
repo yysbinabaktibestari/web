@@ -30,7 +30,18 @@ function setup() {
   pasangTrigger_();
   naikkanVersiCache();
   var pesan = 'Setup selesai: sheet, folder Drive, trigger & akun admin siap.' + (akun ? '\n' + akun : '');
-  try { if (typeof cekYoutube_ === 'function') pesan += '\n' + cekYoutube_(); } catch (e) { /* abaikan */ }
+  var kurang = '';
+  try {
+    var izin = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
+    if (izin.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED) kurang = izin.getAuthorizationUrl() || '';
+  } catch (e) { /* abaikan */ }
+  if (kurang) {
+    prop_('YT_IZIN_URL', kurang);
+    pesan += '\nPERHATIAN: sebagian izin belum dicentang (layar izin Google kini memakai kotak centang per izin, mis. YouTube). ' +
+      'Buka tautan ini dengan akun Google pemilik, pilih "Pilih semua", lalu Lanjutkan:\n' + kurang + '\nSesudahnya jalankan perbaruiSistem sekali lagi.';
+  } else {
+    try { if (typeof cekYoutube_ === 'function') pesan += '\n' + cekYoutube_(); } catch (e) { /* abaikan */ }
+  }
   Logger.log(pesan);
   return pesan;
 }
@@ -112,12 +123,12 @@ function sidikStruktur_() {
  * Dipanggil di awal setiap permintaan. Bila kode baru menambah sheet/kolom,
  * struktur Google Sheet disesuaikan otomatis (sekali), tanpa perlu menjalankan setup().
  */
-function pastikanStruktur_() {
+function pastikanStruktur_(tunggu) {
   if (!prop_('SPREADSHEET_ID')) return; // setup() belum pernah dijalankan
   var sidik = sidikStruktur_();
   if (prop_('STRUKTUR') === sidik) return;
   var lock = LockService.getScriptLock();
-  if (!lock.tryLock(20000)) return;
+  if (!lock.tryLock(tunggu === undefined ? 20000 : tunggu)) return;
   try {
     if (prop_('STRUKTUR') === sidik) return;
     semuaSheetDef_().forEach(pastikanSheet_);
@@ -198,11 +209,18 @@ function tugasPerJam() {
   else { try { batasiFrekuensi_('tugasPerJam', 600); } catch (e) { return; } }
   var mulai = Date.now();
   prop_('TUGAS_TERAKHIR', String(mulai));
+  try { pastikanStruktur_(20000); } catch (e) { console.error('struktur: ' + pesanError_(e)); }
+  // Putaran lanjutan dibuat lebih pendek agar panel admin tidak lama menunggu giliran
+  if (segera) CONFIG.BATAS_WAKTU_MS = Math.min(CONFIG.BATAS_WAKTU_MS, 3 * 60 * 1000);
+  var verAwal = prop_('CACHE_VER');
   daftarModul_().forEach(function (m) {
     if (typeof m.tugasPerJam === 'function') {
       try { m.tugasPerJam(); } catch (e) { console.error('tugasPerJam ' + m.id + ': ' + pesanError_(e)); }
     }
   });
+  // Tiap jam: segarkan cache (tulisan terjadwal, perubahan langsung di Sheet); lalu siapkan cache halaman utama
+  if (!segera && prop_('CACHE_VER') === verAwal) naikkanVersiCache();
+  if (prop_('CACHE_VER') !== verAwal) hangatkanCache_();
   catatPemakaian_(Date.now() - mulai);
 }
 

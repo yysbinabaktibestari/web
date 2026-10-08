@@ -423,3 +423,9 @@ main:focus { outline: none; }
 /* Logo terlindung: tidak bisa diseret, dipilih, atau disimpan lewat menu gambar / tekan-lama */
 .gambar-lindung { -webkit-user-drag: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; pointer-events: none; }
 .logo-tanda.ada-gambar, .avatar-logo { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+
+/* Teks pemuatan muncul bila menunggu lebih dari 4 detik */
+.muat { flex-direction: column; align-items: center; gap: 14px; }
+.muat-teks { margin: 0; max-width: 320px; text-align: center; color: var(--redup); font-size: 14.5px; opacity: 0; animation: muncul .4s ease 4s forwards; }
+@keyframes muncul { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .muat-teks { opacity: 1; } }
