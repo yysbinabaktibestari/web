@@ -129,8 +129,7 @@ MODUL.keuangan = {
       var items = Array.isArray(b.items) ? b.items : [];
       if (!items.length) throw new Error('items kosong.');
       if (items.length > 500) throw new Error('Maksimal 500 entri per kiriman.');
-      var lock = LockService.getScriptLock();
-      lock.waitLock(20000);
+      var lepas = kunciTulis_();
       try {
         var tb = new Tabel_('Kas');
         var hasil = items.map(function (it) {
@@ -150,7 +149,7 @@ MODUL.keuangan = {
         catatLog_('impor kas', 'Kas', '', k.nama + ': ' + JSON.stringify(hit), { username: 'api:' + k.sumber, nama: k.nama });
         return { ringkas: hit, hasil: hasil };
       } finally {
-        lock.releaseLock();
+        lepas();
       }
     }
   },

@@ -389,13 +389,12 @@ function daftarSaring_(s) {
 function sinkronVideo_(ids, opsi) {
   opsi = opsi || {};
   var dariPanel = typeof ADMIN_AKTIF !== 'undefined' && !!ADMIN_AKTIF;
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return { ringkas: 'Sinkron lain sedang berjalan.', detail: [] };
-  var detail = [];
+  if (!ambilGiliran_('video')) return { ringkas: 'Sinkron video sedang berjalan (bisa jadi di latar belakang). Hasilnya akan tercatat di kolom "Hasil sinkron"; coba lagi beberapa menit lagi bila perlu.', detail: [] };
+  var detail = [], ctx = null;
   try {
     var mulai = Date.now();
     var ts = new Tabel_('SumberVideo');
-    var ctx = { tv: new Tabel_('Video'), tp: new Tabel_('PlaylistVideo'), ada: {}, api: youtubeApi_(), apiGagal: '',
+    ctx = { tv: new Tabel_('Video'), tp: new Tabel_('PlaylistVideo'), ada: {}, api: youtubeApi_(), apiGagal: '',
       batas: mulai + CONFIG.BATAS_WAKTU_MS, paksa: !!ids || !!opsi.paksa, dariPanel: dariPanel, lanjut: false };
     ctx.tv.objek().forEach(function (v) { if (v.video_id) ctx.ada[v.video_id] = v; });
     var daftar = ts.objek().filter(function (s) { return s.url && s.aktif !== false && (!ids || ids.indexOf(s.id) >= 0); })
@@ -423,7 +422,7 @@ function sinkronVideo_(ids, opsi) {
     ts.simpan();
     if (ctx.berubah) naikkanVersiCache();     // cache website hanya dikosongkan bila katalog berubah
   } finally {
-    lock.releaseLock();
+    lepasGiliran_('video');
   }
   var ringkas = detail.length ? 'Sinkron selesai untuk ' + detail.length + ' sumber.' : 'Belum ada channel/playlist aktif.';
   var jenis = ctx && ctx.apiGagal ? jenisGagalApi_(ctx.apiGagal) : '';

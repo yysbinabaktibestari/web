@@ -15,5 +15,5 @@ window.KONFIG = {
   CACHE_MENIT: 5,
 
   // Naikkan setiap kali file JS/CSS diubah agar browser memuat versi baru.
-  VERSI: '1.4.4'
+  VERSI: '1.4.6'
 };

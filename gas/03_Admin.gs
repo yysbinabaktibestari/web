@@ -241,8 +241,7 @@ var ADMIN_API = {
 
   simpan: function (nama, data, kunciLama) {
     wajibAkses_(nama);
-    var lock = LockService.getScriptLock();
-    lock.waitLock(20000);
+    var lepas = kunciTulis_();
     try {
       var def = sheetDef_(nama);
       var kunci = def.kunci || 'id';
@@ -283,7 +282,7 @@ var ADMIN_API = {
       catatLog_(lama ? 'ubah' : 'tambah', nama, key, obj.judul || obj.nama || obj.tema || obj.label || obj.keterangan || '');
       var baris = tb.ambil(key);
     } finally {
-      lock.releaseLock();
+      lepas();
     }
     // Hook setelah tersimpan (di luar kunci), mis. konfirmasi donasi → buku kas
     if (m && m.setelahSimpan) {
@@ -299,15 +298,14 @@ var ADMIN_API = {
     if (!kunciList || !kunciList.length) return { terhapus: 0 };
     var m = MODUL[def.modul];
     if (m && m.sebelumHapus) m.sebelumHapus(nama, kunciList);
-    var lock = LockService.getScriptLock();
-    lock.waitLock(20000);
+    var lepas = kunciTulis_();
     try {
       var n = hapusBaris_(nama, kunciList);
       naikkanVersiCache();
       catatLog_('hapus', nama, kunciList, n + ' baris');
       return { terhapus: n };
     } finally {
-      lock.releaseLock();
+      lepas();
     }
   },
 

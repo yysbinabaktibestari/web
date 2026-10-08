@@ -89,8 +89,7 @@ MODUL.kontributor = {
       if (foto && !validUrl_(foto)) throw new Error('URL foto tidak valid.');
       if (!b.setuju) throw new Error('Mohon centang persetujuan.');
       batasiFrekuensi_('daftar:' + email.toLowerCase(), 600, 'Pendaftaran dengan email ini baru saja dikirim.');
-      var lock = LockService.getScriptLock();
-      lock.waitLock(20000);
+      var lepas = kunciTulis_();
       try {
         var tb = new Tabel_('Kontributor');
         var ada = tb.objek().filter(function (k) { return String(k.email).toLowerCase() === email.toLowerCase(); })[0];
@@ -105,7 +104,7 @@ MODUL.kontributor = {
         });
         tb.simpan();
       } finally {
-        lock.releaseLock();
+        lepas();
       }
       naikkanVersiCache();
       return { pesan: 'Pendaftaran diterima. Artikel Anda mulai tampil setelah sinkronisasi berikutnya (paling lama ±1 jam).' };
@@ -128,7 +127,8 @@ MODUL.kontributor = {
 
   sebelumSimpan: function (nama, obj, lama) {
     if (nama !== 'Kontributor') return;
-    if (obj.sumber_url && !obj.sumber_tipe) obj.sumber_tipe = jenisSumber_(obj.sumber_url);
+    // Jenis sumber selalu mengikuti alamatnya (link folder Drive = folder, selain itu feed/situs)
+    if (obj.sumber_url) obj.sumber_tipe = jenisSumber_(obj.sumber_url);
     if (!lama && !obj.terdaftar) obj.terdaftar = new Date();
     if (obj.wa) obj.wa = normalWa_(obj.wa) || obj.wa;
   },
@@ -139,6 +139,16 @@ MODUL.kontributor = {
       run: function (ids) {
         var hasil = sinkronKontributor_(ids && ids.length ? ids : null);
         return { pesan: hasil.ringkas, tabel: hasil.detail };
+      }
+    },
+    {
+      id: 'arsip_ulang', sheet: 'Kontributor', label: 'Baca ulang arsip', perluPilih: true,
+      run: function (ids) {
+        var n = 0;
+        var lepas = kunciTulis_();
+        try { n = ubahKolom_('Kontributor', ids, 'arsip_lanjut', ''); } finally { lepas(); }
+        var hasil = sinkronKontributor_(ids);
+        return { pesan: n + ' kontributor: arsip feed dibaca ulang dari awal (tulisan yang sudah ada dilewati). ' + hasil.ringkas, tabel: hasil.detail };
       }
     },
     {
@@ -177,8 +187,7 @@ function jenisSumber_(url) {
 
 /** Dipanggil trigger per jam & tombol admin. `ids` null = semua kontributor. */
 function sinkronKontributor_(ids) {
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return { ringkas: 'Sinkron lain sedang berjalan. Coba beberapa menit lagi.', detail: [] };
+  if (!ambilGiliran_('artikel')) return { ringkas: 'Sinkron artikel sedang berjalan (bisa jadi di latar belakang). Hasilnya akan tercatat di kolom "Hasil sinkron"; coba lagi beberapa menit lagi bila perlu.', detail: [] };
   var detail = [];
   try {
     var mulai = Date.now();
@@ -196,10 +205,13 @@ function sinkronKontributor_(ids) {
       var k = daftar[i], catatan;
       try {
         var batas = mulai + CONFIG.BATAS_WAKTU_MS;
-        var h = k.sumber_tipe === 'feed' ? sinkronFeed_(k, ta, kat, batas) : sinkronFolder_(k, ta, kat, batas);
+        var kemajuan = (function (id) {
+          return function (lanjut) { tk.set({ id: id, arsip_lanjut: lanjut }); ta.simpan(); tk.simpan(); };
+        })(k.id);
+        var h = k.sumber_tipe === 'feed' ? sinkronFeed_(k, ta, kat, batas, kemajuan) : sinkronFolder_(k, ta, kat, batas);
         catatan = 'OK · ' + h.baru + ' baru, ' + h.ubah + ' diperbarui' + (h.hilang ? ', ' + h.hilang + ' disembunyikan' : '') +
           (h.tertunda ? ', ' + h.tertunda + ' menyusul' : '') + (h.arsip ? ' · ' + h.arsip : '');
-        if (h.tertunda || h.arsipLanjut) adaAntrean = true;
+        if (h.tertunda || (h.arsipLanjut && !h.arsipGagal)) adaAntrean = true;
         if (h.baru || h.ubah || h.hilang) berubah = true;
         if (h.arsipLanjut !== undefined) tk.set({ id: k.id, arsip_lanjut: h.arsipLanjut || 'selesai' });
         if (h.feedBaru) { tk.set({ id: k.id, sumber_url: h.feedBaru }); catatan += ' · alamat feed ditemukan otomatis: ' + h.feedBaru; }
@@ -208,12 +220,13 @@ function sinkronKontributor_(ids) {
       }
       tk.set({ id: k.id, terakhir_sinkron: new Date(), catatan_sinkron: catatan });
       detail.push({ kontributor: k.nama, hasil: catatan });
+      ta.simpan(); tk.simpan();          // simpan per kontributor: hasil tidak hilang bila eksekusi terputus
     }
     ta.simpan();
     tk.simpan();
     if (berubah) naikkanVersiCache();     // cache website hanya dikosongkan bila ada tulisan berubah
   } finally {
-    lock.releaseLock();
+    lepasGiliran_('artikel');
   }
   // Antrean belum habis → putaran berikutnya 1 menit lagi (bukan menunggu sejam)
   var lanjut = adaAntrean && typeof jadwalkanSegera_ === 'function' && jadwalkanSegera_('kontributor');
@@ -266,7 +279,7 @@ function sinkronFolder_(k, ta, kat, batas) {
     if (lama && lama.diperbarui && new Date(lama.diperbarui).getTime() >= updDetik) return;
     if (Date.now() > batas) { h.tertunda++; return; }
     var isi = htmlDoc_(d.file.getId());
-    ta.set({
+    ta.set(hanyaBaru_({
       id: id,
       judul: bersihJudul_(d.file.getName()),
       slug: lama ? lama.slug : slugUnik_(bersihJudul_(d.file.getName()), ta),
@@ -282,7 +295,7 @@ function sinkronFolder_(k, ta, kat, batas) {
       sampul: isi.sampul,
       tanggal: lama ? lama.tanggal : d.file.getDateCreated(),
       diperbarui: upd
-    });
+    }, lama));
     if (lama) h.ubah++; else h.baru++;
   });
   // Doc yang dihapus/dipindah dari folder → disembunyikan
@@ -354,7 +367,7 @@ function ambilFeed_(url) {
  * Halaman pertama feed tiap putaran (tulisan terbaru), lalu arsip lama halaman demi halaman
  * sampai habis: Atom/RSS rel="next", JSON Feed next_url, WordPress ?paged=N, Blogger start-index.
  */
-function sinkronFeed_(k, ta, kat, batas) {
+function sinkronFeed_(k, ta, kat, batas, kemajuan) {
   batas = batas || Date.now() + CONFIG.BATAS_WAKTU_MS;
   var r = ambilFeed_(k.sumber_url);
   if (r.kode >= 400) throw new Error('Feed tidak bisa diambil (HTTP ' + r.kode + ').');
@@ -370,21 +383,42 @@ function sinkronFeed_(k, ta, kat, batas) {
     r = ketemu;
     h.feedBaru = ketemu.url;
   }
+  // Tiap tulisan baru disimpan ke Drive (±2–3 dtk). Waktu diperiksa per tulisan agar eksekusi tidak
+  // diputus paksa oleh Apps Script (6 menit) — kalau diputus, hasil satu putaran hilang semua.
+  var proses = function (items) {
+    for (var i = 0; i < items.length; i++) {
+      if (Date.now() > batas) { h.tertunda += items.length - i; return false; }
+      prosesItemFeed_(items[i], k, ta, kat, h);
+    }
+    return true;
+  };
   var f = bacaFeed_(r.teks, k.sumber_url, 1);
-  f.items.forEach(function (it) { prosesItemFeed_(it, k, ta, kat, h); });
-  if (k.arsip_lanjut === 'selesai') return h;
-  // ---- arsip
-  var berikut = k.arsip_lanjut || f.berikut, n = 0, diambil = 0, lihat = {};
-  while (berikut && n < HALAMAN_ARSIP_PER_PUTARAN && Date.now() < batas) {
+  if (!proses(f.items)) return h;
+  if (k.arsip_lanjut === 'selesai') {
+    // Arsip pernah ditandai selesai, tetapi jumlah tulisan di feed (Blogger: totalResults) jauh lebih banyak → baca ulang
+    if (!(f.total && f.berikut && jumlahArtikelFeed_(ta, k) < f.total - 5)) return h;
+    k.arsip_lanjut = '';
+  }
+  // ---- arsip (halaman baru tidak dimulai bila sisa waktu < 75 dtk)
+  var berikut = k.arsip_lanjut || f.berikut, n = 0, diambil = 0, lihat = {}, gagal = '', tebakan = /[?&]paged=\d+/;
+  while (berikut && n < HALAMAN_ARSIP_PER_PUTARAN && Date.now() < batas - (CONFIG.CADANGAN_HALAMAN_MS || 75000)) {
     if (lihat[berikut]) { berikut = ''; break; }
     lihat[berikut] = 1;
-    var rr = ambilFeed_(berikut);
-    if (rr.kode >= 400) { berikut = ''; break; }                 // mis. WordPress ?paged melewati halaman terakhir → 404
+    var rr;
+    try { rr = ambilFeed_(berikut); } catch (e) { gagal = pesanError_(e); break; }
+    if (rr.kode >= 400) {
+      if (tebakan.test(berikut)) berikut = '';                     // WordPress ?paged melewati halaman terakhir → 404 = habis
+      else gagal = 'HTTP ' + rr.kode;
+      break;
+    }
     var ff;
-    try { ff = bacaFeed_(rr.teks, berikut, halamanKe_(berikut)); } catch (e) { berikut = ''; break; }
+    try { ff = bacaFeed_(rr.teks, berikut, halamanKe_(berikut)); } catch (e) {
+      if (tebakan.test(berikut)) berikut = ''; else gagal = pesanError_(e);
+      break;
+    }
     if (!ff.items.length) { berikut = ''; break; }
     var sebelum = h.baru + h.ubah;
-    ff.items.forEach(function (it) { prosesItemFeed_(it, k, ta, kat, h); });
+    if (!proses(ff.items)) break;                                   // waktu habis di tengah halaman → lanjut dari halaman ini
     diambil += ff.items.length;
     berikut = ff.berikut;
     n++;
@@ -392,10 +426,18 @@ function sinkronFeed_(k, ta, kat, batas) {
       // halaman tebakan WordPress yang isinya sudah semua ada → anggap arsip habis
       berikut = '';
     }
+    if (kemajuan) kemajuan(berikut || 'selesai');                   // simpan kemajuan tiap halaman
   }
   h.arsipLanjut = berikut || '';
-  h.arsip = berikut ? 'arsip: ' + n + ' halaman lagi terbaca, berlanjut' : (n ? 'arsip lama selesai (' + diambil + ' tulisan diperiksa)' : '');
+  h.arsipGagal = !!gagal;
+  h.arsip = gagal ? 'arsip berhenti (' + gagal + '), dicoba lagi pada sinkron berikutnya' :
+    berikut ? 'arsip: ' + n + ' halaman lagi terbaca, berlanjut' : (n ? 'arsip lama selesai (' + diambil + ' tulisan diperiksa)' : '');
+  if (f.total) h.arsip = (h.arsip ? h.arsip + ' · ' : '') + jumlahArtikelFeed_(ta, k) + ' dari ' + f.total + ' tulisan sudah masuk';
   return h;
+}
+
+function jumlahArtikelFeed_(ta, k) {
+  return ta.objek().filter(function (a) { return a.kontributor === k.slug && a.sumber === 'feed'; }).length;
 }
 
 /** true bila teks berupa halaman HTML (bukan RSS/Atom/JSON Feed). */
@@ -473,6 +515,7 @@ function bacaFeed_(teks, url, ke) {
     out.items = parseRss_(root);
     var ch = root.getChild('channel');
     out.berikut = ch ? cariNext(ch, atom) : '';
+    out.total = ch ? totalFeed_(ch) : 0;
     var gen = ch ? teksAnak_(ch, 'generator') : '';
     if (!out.berikut && out.items.length && (/wordpress/i.test(gen) || /\/feed\/?(\?|$)/.test(url))) {
       // WordPress: halaman arsip lewat ?paged=N
@@ -483,10 +526,18 @@ function bacaFeed_(teks, url, ke) {
   } else if (root.getName() === 'feed') {
     out.items = parseAtom_(root);
     out.berikut = cariNext(root, atom);
+    out.total = totalFeed_(root);
   } else {
     throw new Error('Format feed tidak dikenali (didukung: RSS 2.0, Atom, JSON Feed).');
   }
   return out;
+}
+
+/** Jumlah seluruh tulisan menurut feed (openSearch:totalResults, mis. Blogger); 0 bila tidak ada. */
+function totalFeed_(el) {
+  var t = 0;
+  el.getChildren().forEach(function (c) { if (!t && c.getName() === 'totalResults') t = Number(c.getText()) || 0; });
+  return t;
 }
 
 function prosesItemFeed_(it, k, ta, kat, h) {
@@ -496,8 +547,8 @@ function prosesItemFeed_(it, k, ta, kat, h) {
     var hash = 'h' + md5_(it.judul + '|' + html).slice(0, 16);
     var lama = ta.ambil(id);
     if (lama && lama.hash === hash) return;
-    var fileId = simpanFileCache_(id + '.html', html, hash);
-    ta.set({
+    var fileId = simpanFileCache_(id + '.html', html, hash, lama && lama.konten_file);
+    ta.set(hanyaBaru_({
       id: id,
       judul: potong_(bersihJudul_(it.judul), 200),
       slug: lama ? lama.slug : slugUnik_(bersihJudul_(it.judul), ta),
@@ -514,8 +565,19 @@ function prosesItemFeed_(it, k, ta, kat, h) {
       diperbarui: new Date(),
       konten_file: fileId,
       hash: hash
-    });
+    }, lama));
     if (lama) h.ubah++; else h.baru++;
+}
+
+/**
+ * Kolom yang diatur admin (status, kurasi, slug, kategori, tanggal) hanya diisi untuk tulisan baru.
+ * Untuk tulisan yang sudah ada, kolom itu tidak ikut ditulis, jadi perubahan admin selama sinkron tidak tertimpa.
+ */
+function hanyaBaru_(obj, lama) {
+  if (lama) ['slug', 'status_kurasi', 'status', 'kategori', 'tanggal'].forEach(function (c) {
+    if (lama[c] !== '' && lama[c] !== null && lama[c] !== undefined) delete obj[c];
+  });
+  return obj;
 }
 
 function parseFeed_(teks) { return bacaFeed_(teks, '', 1).items; }

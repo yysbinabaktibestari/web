@@ -112,25 +112,42 @@ function tambahBaris_(nama, obj) {
  * Tabel: muat sekali, ubah di memori, tulis sekali.
  * ============================================================== */
 
+var SIBUK_ = 'Sistem sedang sibuk menyimpan data lain. Tunggu beberapa detik lalu coba lagi.';
+
+/**
+ * Kunci tulis singkat. Semua penulisan memegang kunci hanya beberapa detik,
+ * jadi menunggu 30 detik sudah lebih dari cukup; bila tetap gagal, pesan ramah.
+ * Mengembalikan fungsi pelepas (tidak melepas kunci yang sudah dipegang pemanggil).
+ */
+function kunciTulis_(ms) {
+  var lock = LockService.getScriptLock();
+  if (lock.hasLock && lock.hasLock()) return function () {};
+  if (!lock.tryLock(ms || 30000)) throw new Error(SIBUK_);
+  return function () { lock.releaseLock(); };
+}
+
 function Tabel_(nama) {
   this.nama = nama;
   this.def = sheetDef_(nama);
   this.kunci = this.def.kunci || 'id';
   this.tipe = tipeKolom_(this.def);
   this.sh = sheet_(nama);
-  var v = this.sh.getDataRange().getValues();
+  this._muat(this.sh.getDataRange().getValues());
+}
+
+Tabel_.prototype._muat = function (v) {
   this.header = v.shift() || [];
-  this.panjangAwal = v.length;
   this.data = v;
-  this.ubah = {};
+  this.catat = {};      // kunci → { baru, sel: {kolom: nilai} } — hanya sel yang diubah
+  this.ganti = [];      // [kunciLama, kunciBaru]
   this.ik = this.header.indexOf(this.kunci);
-  if (this.ik < 0) throw new Error('Kolom kunci "' + this.kunci + '" tidak ada di sheet ' + nama);
+  if (this.ik < 0) throw new Error('Kolom kunci "' + this.kunci + '" tidak ada di sheet ' + this.nama);
   this.indeks = {};
   for (var i = 0; i < v.length; i++) {
     var key = String(v[i][this.ik]);
     if (key) this.indeks[key] = i;
   }
-}
+};
 
 Tabel_.prototype._obj = function (r) {
   var o = {}, self = this;
@@ -155,36 +172,69 @@ Tabel_.prototype.set = function (obj) {
   var key = obj[this.kunci];
   if (key === undefined || key === null || key === '') { key = id_(); obj[this.kunci] = key; }
   var i = this.indeks[String(key)];
-  var row = i === undefined ? this.header.map(function () { return ''; }) : this.data[i].slice();
+  var baru = i === undefined;
+  var row = baru ? this.header.map(function () { return ''; }) : this.data[i].slice();
+  var c = this.catat[String(key)] || (this.catat[String(key)] = { baru: baru, sel: {} });
   this.header.forEach(function (h, j) {
-    if (h && Object.prototype.hasOwnProperty.call(obj, h)) row[j] = keSel_(obj[h], self.tipe[h]);
+    if (h && Object.prototype.hasOwnProperty.call(obj, h)) { row[j] = keSel_(obj[h], self.tipe[h]); c.sel[h] = row[j]; }
   });
-  if (i === undefined) {
+  if (c.baru) this.header.forEach(function (h, j) { if (h) c.sel[h] = row[j]; });
+  if (baru) {
     this.data.push(row);
-    i = this.data.length - 1;
-    this.indeks[String(key)] = i;
+    this.indeks[String(key)] = this.data.length - 1;
   } else {
     this.data[i] = row;
   }
-  this.ubah[i] = true;
   return key;
 };
 
+/**
+ * Tulis perubahan. Sheet dibaca ulang di bawah kunci singkat lalu HANYA sel yang diubah
+ * yang ditimpa, dicocokkan lewat kolom kunci (bukan nomor baris). Jadi tabel yang dimuat
+ * lama (mis. selama sinkron beberapa menit) tidak menimpa suntingan admin di kolom/baris
+ * lain, tidak menulis ke baris yang salah bila ada baris dihapus, dan tidak menghidupkan
+ * kembali baris yang sudah dihapus.
+ */
 Tabel_.prototype.simpan = function () {
-  lupakanTabel_();
-  var self = this, w = this.header.length;
-  var diubah = Object.keys(this.ubah).map(Number).filter(function (i) { return i < self.panjangAwal; });
-  if (diubah.length > 25) {
-    if (this.panjangAwal) this.sh.getRange(2, 1, this.panjangAwal, w).setValues(this.data.slice(0, this.panjangAwal));
-  } else {
-    diubah.forEach(function (i) { self.sh.getRange(i + 2, 1, 1, w).setValues([self.data[i]]); });
+  var kunciList = Object.keys(this.catat);
+  if (!kunciList.length && !this.ganti.length) return;
+  var lepas = kunciTulis_();
+  try {
+    lupakanTabel_();
+    var v = this.sh.getDataRange().getValues();
+    var header = v.shift() || [];
+    var ik = header.indexOf(this.kunci), w = header.length, n0 = v.length;
+    if (ik < 0) throw new Error('Kolom kunci "' + this.kunci + '" tidak ada di sheet ' + this.nama);
+    var idx = {}, kol = {}, diubah = {}, tambah = [];
+    v.forEach(function (r, i) { var k = String(r[ik]); if (k) idx[k] = i; });
+    header.forEach(function (h, j) { if (h) kol[h] = j; });
+    this.ganti.forEach(function (g) {
+      var i = idx[String(g[0])];
+      if (i === undefined || idx[String(g[1])] !== undefined) return;
+      v[i][ik] = g[1]; delete idx[String(g[0])]; idx[String(g[1])] = i; diubah[i] = 1;
+    });
+    var self = this;
+    kunciList.forEach(function (k) {
+      var c = self.catat[k], i = idx[k];
+      if (i === undefined) {
+        if (!c.baru) return;                       // dihapus orang lain sementara itu → jangan dihidupkan lagi
+        var row = header.map(function () { return ''; });
+        v.push(row); i = v.length - 1; idx[k] = i; tambah.push(i);
+      } else if (i < n0) diubah[i] = 1;
+      Object.keys(c.sel).forEach(function (h) { if (kol[h] !== undefined) v[i][kol[h]] = c.sel[h]; });
+    });
+    var ubah = Object.keys(diubah).map(Number);
+    if (ubah.length > 25) {
+      if (n0) this.sh.getRange(2, 1, n0, w).setValues(v.slice(0, n0));
+    } else {
+      ubah.forEach(function (i) { self.sh.getRange(i + 2, 1, 1, w).setValues([v[i]]); });
+    }
+    if (tambah.length) this.sh.getRange(n0 + 2, 1, tambah.length, w).setValues(v.slice(n0));
+    lupakanTabel_();
+    this._muat([header].concat(v));
+  } finally {
+    lepas();
   }
-  if (this.data.length > this.panjangAwal) {
-    var baru = this.data.slice(this.panjangAwal);
-    this.sh.getRange(this.panjangAwal + 2, 1, baru.length, w).setValues(baru);
-  }
-  this.panjangAwal = this.data.length;
-  this.ubah = {};
 };
 
 /** Ganti nilai kunci sebuah baris (mis. slug kategori diubah). */
@@ -195,7 +245,8 @@ Tabel_.prototype.gantiKunci = function (lama, baru) {
   this.data[i][this.ik] = baru;
   delete this.indeks[String(lama)];
   this.indeks[String(baru)] = i;
-  this.ubah[i] = true;
+  this.ganti.push([lama, baru]);
+  if (this.catat[String(lama)]) { this.catat[String(baru)] = this.catat[String(lama)]; delete this.catat[String(lama)]; }
 };
 
 /** Hapus baris berdasarkan daftar kunci. Mengembalikan jumlah terhapus. */
@@ -282,8 +333,10 @@ function cariFileCache_(nama) {
 }
 
 /** Simpan teks ke folder cache. `tanda` disimpan di deskripsi file untuk cek kebaruan. */
-function simpanFileCache_(nama, isi, tanda) {
-  var f = cariFileCache_(nama);
+function simpanFileCache_(nama, isi, tanda, idLama) {
+  var f = null;
+  if (idLama) { try { f = DriveApp.getFileById(idLama); } catch (e) { f = null; } }   // lebih cepat daripada mencari nama
+  if (!f) f = cariFileCache_(nama);
   if (f) f.setContent(isi);
   else f = folder_('FOLDER_CACHE').createFile(nama, isi, MimeType.PLAIN_TEXT);
   f.setDescription(String(tanda || ''));

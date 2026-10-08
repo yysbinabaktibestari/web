@@ -224,6 +224,26 @@ function tugasPerJam() {
   catatPemakaian_(Date.now() - mulai);
 }
 
+/* ---------- Giliran sinkron ----------
+ * Sinkron bisa berjalan beberapa menit (mengunduh feed/Drive/YouTube). Ia TIDAK memegang
+ * kunci global selama itu (agar simpan/hapus di panel admin tidak "Lock timeout"); cukup
+ * memegang giliran per jenis. Penulisan ke sheet tetap aman lewat Tabel_.simpan (kunci singkat).
+ * Giliran kedaluwarsa sendiri setelah 7 menit (batas eksekusi Apps Script 6 menit).
+ */
+function ambilGiliran_(jenis) {
+  var lock = LockService.getScriptLock();
+  var punya = lock.hasLock && lock.hasLock();
+  if (!punya && !lock.tryLock(10000)) return false;
+  try {
+    if ((Number(propSegar_('GILIRAN_' + jenis)) || 0) > Date.now()) return false;
+    prop_('GILIRAN_' + jenis, String(Date.now() + 7 * 60 * 1000));
+    return true;
+  } finally {
+    if (!punya) lock.releaseLock();
+  }
+}
+function lepasGiliran_(jenis) { prop_('GILIRAN_' + jenis, null); }
+
 /* ---------- Sinkron lanjutan (berantai) ---------- */
 
 /** Menit trigger yang terpakai hari ini (jatah akun Gmail ±90 menit/hari). */
