@@ -79,7 +79,7 @@ Mengedit langsung di Google Sheet juga boleh; cache website segar otomatis.
 Kontributor cukup menyetor **satu sumber** (lewat formulir `#/kontributor/daftar` atau diisi admin):
 
 - **Folder Google Drive** yang dibagikan *Siapa saja yang memiliki link · Pelihat*. Setiap Google Doc = 1 artikel, nama file = judul. **Subfolder dibaca sampai 5 tingkat**, termasuk pintasan (shortcut) ke Doc; kategori diambil dari nama subfolder terdalam yang cocok dengan nama kategori (mis. `Opini/2026/Pendidikan` → Pendidikan; nomor di depan nama folder diabaikan). Hanya format Google Docs yang dibaca (bukan .docx/PDF). Doc yang dihapus dari folder otomatis jadi *Tidak tayang*.
-- **Feed website**: RSS 2.0, Atom, atau JSON Feed (WordPress `/feed`, Blogger `/feeds/posts/default`, atau website yayasan lain yang memakai sistem ini).
+- **Feed website**: RSS 2.0, Atom, atau JSON Feed. Boleh juga mengisi alamat situsnya saja — feed dicari otomatis lalu alamatnya disimpan (WordPress `/feed`, Blogger `/feeds/posts/default`, atau website yayasan lain yang memakai sistem ini).
 
 Sinkron berjalan **tiap jam** (atau tombol **Sinkron sekarang**). Selama masih ada antrean, putaran berikutnya **otomatis menyusul ±1 menit kemudian** (tidak menunggu sejam) sampai habis.
 - Folder: semua Doc, tanpa batas jumlah; hanya Doc baru/berubah yang diproses (±5 menit per putaran).

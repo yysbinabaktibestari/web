@@ -202,6 +202,7 @@ function sinkronKontributor_(ids) {
         if (h.tertunda || h.arsipLanjut) adaAntrean = true;
         if (h.baru || h.ubah || h.hilang) berubah = true;
         if (h.arsipLanjut !== undefined) tk.set({ id: k.id, arsip_lanjut: h.arsipLanjut || 'selesai' });
+        if (h.feedBaru) { tk.set({ id: k.id, sumber_url: h.feedBaru }); catatan += ' · alamat feed ditemukan otomatis: ' + h.feedBaru; }
       } catch (e) {
         catatan = 'Gagal: ' + pesanError_(e);
       }
@@ -357,8 +358,19 @@ function sinkronFeed_(k, ta, kat, batas) {
   batas = batas || Date.now() + CONFIG.BATAS_WAKTU_MS;
   var r = ambilFeed_(k.sumber_url);
   if (r.kode >= 400) throw new Error('Feed tidak bisa diambil (HTTP ' + r.kode + ').');
-  var f = bacaFeed_(r.teks, k.sumber_url, 1);
   var h = { baru: 0, ubah: 0, hilang: 0, tertunda: 0 };
+  if (halamanHtml_(r.teks)) {
+    // Yang diisi alamat situs, bukan feed → cari feed-nya otomatis, lalu simpan
+    var ketemu = temukanFeed_(k.sumber_url, r.teks);
+    if (!ketemu) {
+      throw new Error('Alamat ini halaman web, bukan feed, dan feed-nya tidak ditemukan otomatis. Isi dengan alamat feed, ' +
+        'mis. situs.com/feed (WordPress), situs.blogspot.com/feeds/posts/default (Blogger), atau link folder Google Drive.');
+    }
+    k.sumber_url = ketemu.url;
+    r = ketemu;
+    h.feedBaru = ketemu.url;
+  }
+  var f = bacaFeed_(r.teks, k.sumber_url, 1);
   f.items.forEach(function (it) { prosesItemFeed_(it, k, ta, kat, h); });
   if (k.arsip_lanjut === 'selesai') return h;
   // ---- arsip
@@ -386,6 +398,50 @@ function sinkronFeed_(k, ta, kat, batas) {
   return h;
 }
 
+/** true bila teks berupa halaman HTML (bukan RSS/Atom/JSON Feed). */
+function halamanHtml_(teks) {
+  var s = String(teks || '').replace(/^\uFEFF/, '').trim().slice(0, 600).toLowerCase();
+  return /^<!doctype html|^<html|<head[\s>]|<body[\s>]/.test(s) && !/<rss[\s>]|<feed[\s>]/.test(s);
+}
+
+/**
+ * Cari feed dari halaman situs: <link rel="alternate" type="application/rss+xml|atom+xml|feed+json">,
+ * lalu alamat umum (WordPress /feed/, Blogger /feeds/posts/default, /rss.xml, /feed.xml, /atom.xml, /index.xml).
+ * Mengembalikan {url, kode, teks} atau null.
+ */
+function temukanFeed_(url, html) {
+  var calon = [];
+  var re = /<link\b[^>]*>/gi, m;
+  while ((m = re.exec(String(html || '')))) {
+    var tag = m[0];
+    if (!/rel=["']?alternate/i.test(tag) || !/type=["']?application\/(rss\+xml|atom\+xml|feed\+json|json)/i.test(tag)) continue;
+    if (/comments/i.test(tag)) continue;                                   // lewati feed komentar
+    var href = (tag.match(/href=["']([^"']+)["']/i) || [])[1];
+    if (href) calon.push(href.replace(/&amp;/g, '&'));
+  }
+  var akar = String(url).replace(/[?#].*$/, '').replace(/\/+$/, '');
+  var asal = (akar.match(/^https?:\/\/[^/]+/) || [''])[0];
+  ['/feed/', '/feeds/posts/default', '/rss.xml', '/feed.xml', '/atom.xml', '/index.xml'].forEach(function (p) {
+    calon.push(akar + p);
+    if (asal && asal !== akar) calon.push(asal + p);
+  });
+  var dicoba = {};
+  for (var i = 0; i < calon.length && i < 14; i++) {
+    var u = calon[i];
+    if (!/^https?:/i.test(u)) u = asal + (u.charAt(0) === '/' ? '' : '/') + u;
+    if (dicoba[u]) continue;
+    dicoba[u] = 1;
+    try {
+      var r = ambilFeed_(u);
+      if (r.kode < 400 && r.teks && !halamanHtml_(r.teks)) {
+        var f = bacaFeed_(r.teks, u, 1);
+        if (f.items.length) return { url: u, kode: r.kode, teks: r.teks };
+      }
+    } catch (e) { /* calon berikutnya */ }
+  }
+  return null;
+}
+
 function idFeed_(k, it) { return 'r_' + md5_(k.slug + '|' + (it.guid || it.url || it.judul)).slice(0, 16); }
 
 function halamanKe_(url) {
@@ -403,7 +459,10 @@ function bacaFeed_(teks, url, ke) {
     out.berikut = j.next_url || '';
     return out;
   }
-  var root = XmlService.parse(s).getRootElement();
+  if (halamanHtml_(s)) throw new Error('Alamat ini halaman web, bukan feed.');
+  var root;
+  try { root = XmlService.parse(s).getRootElement(); }
+  catch (e) { throw new Error('Isi feed tidak bisa dibaca (bukan RSS/Atom yang valid).'); }
   var atom = XmlService.getNamespace('http://www.w3.org/2005/Atom');
   var cariNext = function (el, ns) {
     var href = '';
@@ -459,14 +518,7 @@ function prosesItemFeed_(it, k, ta, kat, h) {
     if (lama) h.ubah++; else h.baru++;
 }
 
-function parseFeed_(teks) {
-  var s = String(teks || '').replace(/^﻿/, '').trim();
-  if (s.charAt(0) === '{') return parseJsonFeed_(JSON.parse(s));
-  var root = XmlService.parse(s).getRootElement();
-  if (root.getName() === 'rss') return parseRss_(root);
-  if (root.getName() === 'feed') return parseAtom_(root);
-  throw new Error('Format feed tidak dikenali (didukung: RSS 2.0, Atom, JSON Feed).');
-}
+function parseFeed_(teks) { return bacaFeed_(teks, '', 1).items; }
 
 function teksAnak_(el, nama, ns) {
   var c = ns ? el.getChild(nama, ns) : el.getChild(nama);

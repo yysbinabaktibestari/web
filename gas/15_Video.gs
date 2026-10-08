@@ -790,7 +790,10 @@ function imporVideo_(items, bawaan, ctx) {
 
 /** Feed RSS YouTube (channel atau playlist). */
 function parseFeedYoutube_(xml) {
-  var root = XmlService.parse(xml).getRootElement();
+  if (halamanHtml_(xml)) throw new Error('YouTube mengirim halaman web, bukan feed (channel/playlist mungkin pribadi atau sementara tidak tersedia).');
+  var root;
+  try { root = XmlService.parse(xml).getRootElement(); }
+  catch (e) { throw new Error('Feed YouTube tidak bisa dibaca saat ini; dicoba lagi pada sinkron berikutnya.'); }
   var atom = XmlService.getNamespace('http://www.w3.org/2005/Atom');
   var yt = XmlService.getNamespace('yt', 'http://www.youtube.com/xml/schemas/2015');
   var media = XmlService.getNamespace('media', 'http://search.yahoo.com/mrss/');
